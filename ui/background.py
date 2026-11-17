@@ -7,10 +7,10 @@ import random
 import streamlit as st
 
 # ------------------------------- SETTINGS -------------------------------
-COVER_COUNT = 100       # total covers floating around. 30 = calm, 60 = busy, ~100 = max sensible
+COVER_COUNT = 60       # total covers floating around. 30 = calm, 60 = busy, ~100 = max sensible
 VISIBLE_PERCENT = 45   # % of covers visible at any moment (the rest are faded out and rotate in)
-SIZE_SCALE = 1.0       # multiply all cover sizes (0.8 = smaller, 1.2 = bigger)
-TIER_MIX = {"big": 0.15, "mid": 0.35, "small": 0.50}   # share of big / medium / small covers
+SIZE_SCALE = 5.5       # multiply all cover sizes (0.8 = smaller, 1.2 = bigger)
+TIER_MIX = {"big": 0.15, "mid": 0.4, "small": 0.45}   # share of big / medium / small covers
 # ------------------------------------------------------------------------
 
 # tier: (min px, max px, blur px, opacity, drift seconds range)
