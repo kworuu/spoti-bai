@@ -19,6 +19,8 @@ CSS = """
 [data-testid="stSidebar"],[data-testid="stSidebarNav"],[data-testid="stSidebarCollapsedControl"],[data-testid="stExpandSidebarButton"],
 [data-testid="collapsedControl"],footer,#MainMenu,.stAppDeployButton{display:none!important}
 header[data-testid="stHeader"]{background:transparent}
+/* no "copy link" anchor icon next to headings */
+[data-testid="stHeaderActionElements"],.stMarkdown h1 a,.stMarkdown h2 a,.stMarkdown h3 a{display:none!important}
 .stApp,.stApp p,.stApp button,.stApp input{font-family:'Instrument Sans',system-ui,sans-serif}
 .stMain .block-container{position:relative;z-index:1;max-width:560px;padding-top:12vh}
 
@@ -64,14 +66,45 @@ header[data-testid="stHeader"]{background:transparent}
 .stApp [data-testid^="stBase"]:disabled,.stApp [data-testid^="stBase"]:disabled:hover{
   background:var(--slate);color:#fff;opacity:.5;cursor:not-allowed;border:0}
 .stApp [data-testid^="stBase"]:disabled p{color:#fff}
-/* brand hover colors: Spotify green (dark text for contrast), YouTube red */
-.stApp .st-key-btn_spotify [data-testid="stBaseButton-primary"]:hover:not(:disabled){background:#1ED760;color:#0E0E10}
-.stApp .st-key-btn_spotify [data-testid="stBaseButton-primary"]:hover:not(:disabled) p{color:#0E0E10}
-.stApp .st-key-btn_youtube [data-testid^="stBase"]:disabled:hover{background:#FF0000;color:#fff;opacity:1}
+/* chat reply buttons: slate pills that darken to black (= "selected") on hover */
+.stApp [class*="st-key-sb_choices"] [data-testid="stBaseButton-secondary"]:hover:not(:disabled){background:var(--ink)}
+/* brand hover colors: button key ends in _brand-spotify / _brand-youtube */
+.stApp [class*="_brand-spotify"] [data-testid^="stBase"]:hover:not(:disabled){background:#1ED760;color:#0E0E10}
+.stApp [class*="_brand-spotify"] [data-testid^="stBase"]:hover:not(:disabled) p{color:#0E0E10}
+.stApp [class*="_brand-youtube"] [data-testid^="stBase"]:hover:not(:disabled){background:#FF0000;color:#fff}
 [data-testid^="stBase"]:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .st-key-sb_stack [data-testid="stElementContainer"]{width:100%!important}
 .st-key-sb_stack button{width:100%}
 .st-key-sb_replies{align-items:flex-end}
+.st-key-sb_center{align-items:center}
+
+/* home headline */
+.sb-headline{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;text-transform:uppercase;
+  font-size:clamp(1.9rem,6vw,2.7rem);line-height:1.05;letter-spacing:-.02em;text-align:center;
+  text-wrap:balance;margin:.25rem 0 .75rem;padding:0;color:var(--ink)}
+
+/* AI text: typed one character at a time (each char has its own start time, --i) */
+.sb-bot{text-align:left;color:var(--ink);margin:.4rem 0}
+.sb-ch{position:relative;opacity:0;animation:sb-pop 1ms linear calc(var(--i)*var(--cps)) both}
+.sb-ch::after{content:"";position:absolute;left:100%;top:.14em;width:2px;height:1.05em;margin-left:1px;
+  background:var(--ink);opacity:0;animation:sb-caret calc(var(--g)*var(--cps)) steps(1,end) calc(var(--i)*var(--cps)) 1}
+.sb-ch.sb-last::after{animation:sb-blink .6s steps(1,end) calc(var(--i)*var(--cps)) 4}
+@keyframes sb-pop{to{opacity:1}}
+@keyframes sb-caret{from,to{opacity:1}}
+@keyframes sb-blink{0%{opacity:1}50%{opacity:0}}
+
+/* reply buttons: invisible + unclickable until the AI finishes typing, then fade in */
+[class*="st-key-sb_choices"]{align-items:flex-end;gap:.5rem;
+  animation:sb-reveal .7s ease var(--wait,0s) both}
+@keyframes sb-reveal{from{opacity:0;visibility:hidden;pointer-events:none}to{opacity:1;visibility:visible;pointer-events:auto}}
+.st-key-sb_js{position:absolute;height:0;margin:0;padding:0;overflow:hidden}
+
+/* finished choices in the history: picked = black, others stay slate */
+.sb-hist{display:flex;flex-direction:column;align-items:flex-end;gap:.5rem;margin:.25rem 0 .75rem}
+.sb-pill{display:inline-flex;align-items:center;box-sizing:border-box;min-height:40px;padding:.5rem 1.3rem;
+  border-radius:999px;background:var(--slate);color:#fff;font-family:'Instrument Sans',system-ui,sans-serif;
+  font-size:.875rem;font-weight:400;line-height:1.6}   /* same text metrics as the live buttons */
+.sb-pill.chosen{background:var(--ink)}
 """
 
 
@@ -92,6 +125,10 @@ def card(key: str = "card"):
 
 def wordmark() -> None:
     st.markdown('<h1 class="sb-wordmark">SPOTIBAI</h1>', unsafe_allow_html=True)
+
+
+def headline(text: str) -> None:
+    st.markdown(f'<h1 class="sb-headline">{escape(text)}</h1>', unsafe_allow_html=True)
 
 
 def lede(text: str) -> None:
