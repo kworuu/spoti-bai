@@ -21,3 +21,6 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db.env
+.streamlit/secrets.toml
+__pycache__/
+.cache/
