@@ -1,0 +1,23 @@
+# --- Secrets (never commit these) ---
+.streamlit/secrets.toml
+.env
+.env.*
+
+# Spotipy's token cache (the app keeps tokens in the session, but this guards old runs)
+.cache
+.cache-*
+
+# --- Python virtual environment ---
+venv/
+.venv/
+env/
+
+# --- Python cache files ---
+__pycache__/
+*.py[cod]
+
+# --- Editor / OS files ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
