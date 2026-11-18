@@ -1,5 +1,16 @@
+import sys
+from pathlib import Path
+
+# Needed for directory structure sa python 
+# kay dli siya ma recognize if wala ni siya
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+
 import streamlit as st
-from ui import setup_page, card, wordmark, bot_say
+from FrontEnd.UI import setup_page, card, wordmark, bot_say
 
 setup_page("SpotiBai | Roast")
 step = st.session_state.setdefault("step", 0)

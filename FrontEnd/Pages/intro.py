@@ -1,10 +1,21 @@
+import sys
+from pathlib import Path
+
+# Needed for directory structure sa python 
+# kay dli siya ma recognize if wala ni siya
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+
 import streamlit as st
-from ui import setup_page, card, wordmark
-from ui.chat import ai_said, ai_say, chosen_pills, choice_buttons, follow_scroll
+from FrontEnd.UI import setup_page, card, wordmark
+from FrontEnd.UI.chat import ai_said, ai_say, chosen_pills, choice_buttons, follow_scroll
 
 # ---- The conversation. Each node = one AI message + the reply options under it. ----
 # option: label (what the user "says"), next (node to go to), go (page to open), brand (hover color)
-GOOD = "pages/1_Roast_Chat.py"   # TODO: replace with the real Spotify OAuth redirect
+GOOD = "Pages/roastChat.py"   # TODO: replace with the real Spotify OAuth redirect
 FLOW = {
     "intro": {
         "say": ("Hi, I am SpotiBai, your AI chatbot that will evaluate your music taste.\n"
