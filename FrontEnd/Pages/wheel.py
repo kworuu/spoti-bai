@@ -19,6 +19,8 @@ Open: http://127.0.0.1:8501   (use 127.0.0.1, not localhost — must match the r
 
 import json
 import random
+from pathlib import Path
+import tomllib
 
 import requests
 import spotipy
@@ -29,6 +31,15 @@ from spotipy.oauth2 import SpotifyOAuth
 
 # Must be the first Streamlit call.
 st.set_page_config(page_title="SPOTIBAI", page_icon="🎡", layout="wide")
+
+# ---- Load secrets manually from FrontEnd/.streamlit/secrets.toml ----
+SECRETS_PATH = Path(__file__).resolve().parents[1] / ".streamlit" / "secrets.toml"
+try:
+    with open(SECRETS_PATH, "rb") as f:
+        secrets = tomllib.load(f)
+except FileNotFoundError:
+    st.error(f"Secrets file not found at expected path: {SECRETS_PATH}")
+    st.stop()
 
 SCOPE = "user-top-read user-read-recently-played"
 
@@ -54,9 +65,9 @@ class SessionCacheHandler(CacheHandler):
 
 
 auth = SpotifyOAuth(
-    client_id=st.secrets["SPOTIFY_CLIENT_ID"],
-    client_secret=st.secrets["SPOTIFY_CLIENT_SECRET"],
-    redirect_uri=st.secrets.get("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8501"),
+    client_id=secrets["SPOTIFY_CLIENT_ID"],
+    client_secret=secrets["SPOTIFY_CLIENT_SECRET"],
+    redirect_uri=secrets.get("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8501"),
     scope=SCOPE,
     cache_handler=SessionCacheHandler(),
     open_browser=False,

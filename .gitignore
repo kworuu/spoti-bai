@@ -1,5 +1,5 @@
 # --- Secrets (never commit these) ---
-wheelResult/.streamlit/secrets.toml
+FrontEnd/.streamlit/secrets.toml
 .env
 .env.*
 
@@ -21,6 +21,6 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db.env
-.streamlit/secrets.toml
+FrontEnd/.streamlit/secrets.toml
 __pycache__/
 .cache/

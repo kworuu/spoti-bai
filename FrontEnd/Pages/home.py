@@ -12,8 +12,8 @@ st.set_page_config(
     layout="wide"
 )
 
-BASE_DIR = Path(__file__).resolve().parent
-ALBUM_DIR = BASE_DIR / "albumCover"
+BASE_DIR = Path(__file__).resolve().parent.parent
+ALBUM_DIR = BASE_DIR / "AlbumCover"
 
 
 # ==========================================
@@ -385,10 +385,8 @@ with left_hero:
 
     with btn_col:
 
-        st.button(
-            "Find Out",
-            key="find_out_button"
-        )
+        if st.button("Find Out", key="find_out_button"):
+            st.switch_page("Pages/intro.py")
 
 
 # ==========================================

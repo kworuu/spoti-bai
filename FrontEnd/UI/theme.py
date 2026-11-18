@@ -2,7 +2,7 @@
 from contextlib import contextmanager
 from html import escape
 import streamlit as st
-from spotify_covers import get_covers
+from FrontEnd.Pages.spotify_covers import get_covers
 from .background import COVER_COUNT, fade_css, render_background
 
 # The floating background IS the design, so by default it keeps moving even when the OS asks for
