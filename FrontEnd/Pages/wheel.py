@@ -77,22 +77,42 @@ auth = SpotifyOAuth(
 params = st.query_params
 
 if "error" in params:  # user pressed "Cancel" on Spotify's login page
-    st.error(f"Spotify login was cancelled ({params['error']}).")
+    st.session_state["login_failed"] = True
+    st.session_state["login_message"] = f"Spotify login was cancelled ({params['error']})."
     st.query_params.clear()
+    st.rerun()
 
-if "code" in params:  # Spotify redirected back with a login code
+if "code" in params:  # Spotify sent us back with a login code
     try:
         auth.get_access_token(params["code"], as_dict=False, check_cache=False)
-    except spotipy.SpotifyOauthError as e:
-        st.error(f"Login failed: {e}")
+        st.session_state["login_failed"] = False
+    except Exception as e:
+        st.session_state["login_failed"] = True
+        st.session_state["login_message"] = f"Login failed: {e}"
     st.query_params.clear()
     st.rerun()
 
 if not auth.validate_token(auth.cache_handler.get_cached_token()):
-    st.title("SPOTIBAI")
-    st.write("Log in with Spotify to fill the wheel with your own songs.")
-    st.link_button("Log in with Spotify", auth.get_authorize_url(), type="primary")
+    spotify_login_url = auth.get_authorize_url()
+
+    # If the last try failed, stop and show why instead of jumping to Spotify again.
+    if st.session_state.get("login_failed"):
+        st.error(st.session_state.get("login_message", "Login failed."))
+        st.link_button("Try Spotify login again", spotify_login_url, type="primary")
+        st.stop()
+
+    components.html(
+        f"""
+        <script>
+          const redirectScript = window.parent.document.createElement("script");
+          redirectScript.textContent = "window.location.href = " + JSON.stringify({json.dumps(spotify_login_url)}) + ";";
+          window.parent.document.head.appendChild(redirectScript);
+        </script>
+        """,
+        height=0,
+    )
     st.stop()
+    
 
 sp = spotipy.Spotify(
     auth_manager=auth,
@@ -181,8 +201,6 @@ if not wheel:
     st.warning("Your Spotify account doesn't have listening history yet. "
                "Play a few songs on Spotify, then refresh this page.")
     st.stop()
-
-
 # ---------------------------------------------------------------------------
 # 3. Chat content — BACKEND HOOK
 # ---------------------------------------------------------------------------
