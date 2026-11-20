@@ -97,6 +97,16 @@ def _refresh(cid: str, secret: str, limit: int) -> None:
         _refreshing = False
 
 
+def _credentials() -> tuple[str, str]:
+    """Spotify app credentials. Accepts BOTH secrets layouts so covers and wheel.py share one file:
+      [spotify] client_id / client_secret      (original layout)
+      SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET (flat keys, as wheel.py uses)"""
+    sec = st.secrets
+    if "spotify" in sec:
+        return sec["spotify"]["client_id"], sec["spotify"]["client_secret"]
+    return sec["SPOTIFY_CLIENT_ID"], sec["SPOTIFY_CLIENT_SECRET"]
+
+
 def get_covers(limit: int = 30) -> list[dict]:
     """Returns [{"m": 300px url, "s": 64px url}, ...] or [] on failure (UI shows empty boxes).
     If the cache holds fewer covers than `limit` (you raised the count), it is refetched once."""
@@ -113,8 +123,7 @@ def get_covers(limit: int = 30) -> list[dict]:
     if covers and big_enough and now - ts < FRESH_FOR:
         return covers[:limit]
     try:
-        s = st.secrets["spotify"]
-        cid, secret = s["client_id"], s["client_secret"]
+        cid, secret = _credentials()
     except Exception as e:
         log.warning("Spotify secrets not available: %s", e)
         return covers[:limit] if covers else []
