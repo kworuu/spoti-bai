@@ -45,7 +45,7 @@ SCOPE = "user-top-read user-read-recently-played"
 
 # ---- Settings you can change ------------------------------------------------
 TOP_N = 10                  # songs on the wheel
-CLIP_SECONDS = 3600           # how long each song plays (30 or 60)
+CLIP_SECONDS = 30           # how long each song plays (30 or 60)
 TIME_RANGE = "medium_term"  # "short_term" = last 4 weeks, "medium_term" = ~6 months, "long_term" = all time
 # -----------------------------------------------------------------------------
 
