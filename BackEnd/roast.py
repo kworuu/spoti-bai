@@ -81,7 +81,8 @@ def fallback_roast(profile: ListeningProfile, stats: dict, lang: str = "en") -> 
         persona = {"aesthetic": "unfinished playlist", "vibe": "main character on a jeepney"}
         reason = "Based on your gauges."
 
-    score = clamp_score(3 + (g["Genre Range"] * 0.5 + (100 - g["Loyalty"]) * 0.3
+    genre_range = 50 if g["Genre Range"] is None else g["Genre Range"]
+    score = clamp_score(3 + (genre_range * 0.5 + (100 - g["Loyalty"]) * 0.3
                              + g["Era Shift"] * 0.2) / 100 * 7)
     return {
         "beats": [{"id": b, "text": t, "replies": r} for b, t, r in zip(BEAT_IDS, texts, replies)],

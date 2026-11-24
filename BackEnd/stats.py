@@ -80,7 +80,7 @@ def gauges(p: ListeningProfile, hours: dict, tvn: dict, gen: dict,
     return {
         "Night Owl": hours["night_owl"],
         "Loyalty": loyalty,
-        "Genre Range": min(100, _pct(gen["distinct"], GENRE_RANGE_FULL)),
+        "Genre Range": min(100, _pct(gen["distinct"], GENRE_RANGE_FULL)) if gen["distinct"] else None,  # None = unknown
         "Time Travel": time_travel,
         "Era Shift": tvn["shift"],
     }

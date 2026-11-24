@@ -122,3 +122,14 @@ def test_fallback_handles_empty_profile(make_profile):
     p = make_profile()
     r = fallback_roast(p, compute_all(p), "en")
     assert len(r["beats"]) == 6
+
+
+def test_prompt_data_hides_unknowns_and_full_name(make_profile):
+    from BackEnd.models import Artist
+    from tests.conftest import track
+    p = make_profile(top_tracks_now=[track()], top_artists_now=[Artist("No Genre Artist")])
+    p.display_name = "Charles Benedict Daragosa"
+    data = prompts.data_block(p, compute_all(p))
+    assert data["display_name"] == "Charles"
+    assert data["genres"] == "unknown"
+    assert "Genre Range" not in data["gauges"]

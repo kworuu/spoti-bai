@@ -60,5 +60,6 @@ def test_gauges_known_values(sample_profile):
 
 def test_empty_profile_never_crashes(make_profile):
     s = stats.compute_all(make_profile(), this_year=2026)
-    assert all(v == 0 for v in s["gauges"].values())
+    assert s["gauges"]["Genre Range"] is None        # no genres = unknown, not zero
+    assert all(v == 0 for k, v in s["gauges"].items() if k != "Genre Range")
     assert s["top"] == {"artists": [], "tracks": []}
