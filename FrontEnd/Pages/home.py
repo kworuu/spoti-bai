@@ -386,7 +386,7 @@ with left_hero:
     with btn_col:
 
         if st.button("Find Out", key="find_out_button"):
-            st.switch_page("Pages/intro.py")
+            st.switch_page("FrontEnd/Pages/intro.py")
 
 
 # ==========================================

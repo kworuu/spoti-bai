@@ -6,10 +6,10 @@ st.set_page_config(
 )
 
 pages = [
-    st.Page("Pages/home.py", title="Home", default=True),
-    st.Page("Pages/intro.py", title="Intro"),
-    st.Page("Pages/wheel.py", title="Wheel"),
-    st.Page("Pages/roastChat.py", title="Roast Chat"),
+    st.Page("FrontEnd/Pages/home.py", title="Home", default=True),
+    st.Page("FrontEnd/Pages/intro.py", title="Intro"),
+    st.Page("FrontEnd/Pages/wheel.py", title="Wheel"),
+    st.Page("FrontEnd/Pages/roastChat.py", title="Roast Chat"),
 ]
 
 navigation = st.navigation(pages, position="hidden")
