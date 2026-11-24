@@ -17,7 +17,7 @@ from FrontEnd.UI.chat import ai_said, ai_say, chosen_pills, follow_scroll
 # option: label (what the user "says"), next (node to go to), go (page to open),
 #         primary (solid dark button), brand (hover color: spotify / youtube)
 # node:   step (the "STEP 0x" in the header, default "01")
-GOOD = "Pages/wheel.py"   # wheel.py handles the Spotify login (see SPOTIFY_REDIRECT_URI in secrets)
+GOOD = "FrontEnd/Pages/wheel.py"   # wheel.py handles the Spotify login (see SPOTIFY_REDIRECT_URI in secrets)
 FLOW = {
     "intro": {
         "say": ("Hi, I am SpotiBai, your AI chatbot that will evaluate your music taste.\n"

@@ -32,8 +32,8 @@ from spotipy.oauth2 import SpotifyOAuth
 # Must be the first Streamlit call.
 st.set_page_config(page_title="SPOTIBAI", page_icon="🎡", layout="wide")
 
-# ---- Load secrets manually from FrontEnd/.streamlit/secrets.toml ----
-SECRETS_PATH = Path(__file__).resolve().parents[1] / ".streamlit" / "secrets.toml"
+# ---- Load secrets manually from .streamlit/secrets.toml (project root) ----
+SECRETS_PATH = Path(__file__).resolve().parents[2] / ".streamlit" / "secrets.toml"
 try:
     with open(SECRETS_PATH, "rb") as f:
         secrets = tomllib.load(f)
