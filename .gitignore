@@ -7,6 +7,9 @@
 .cache
 .cache-*
 
+# --- Personal test data (real listening history from scripts/dump_profile.py) ---
+tests/fixtures/
+
 # --- Python virtual environment ---
 venv/
 .venv/
@@ -20,7 +23,6 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db.env
-.streamlit/secrets.toml
-__pycache__/
+Thumbs.db
+.env
 .cache/
