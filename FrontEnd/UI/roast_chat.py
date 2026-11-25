@@ -144,11 +144,11 @@ def _verdict_html(roast: dict, lang: str) -> str:
     label = "Aux Cord Rating" if lang == "en" else "Aux Cord Rating mo"
     lines = [f'{label}: <b class="big">{aux["score"]}/10</b>']
     if aux.get("reason"):
-        lines.append(escape(aux["reason"]))
+        lines.append(_static_html(aux["reason"]))
     if persona.get("aesthetic"):
-        lines.append(f"<b>Aesthetic:</b> {escape(persona['aesthetic'])}")
+        lines.append(f"<b>Aesthetic:</b> {_static_html(persona['aesthetic'])}")
     if persona.get("vibe"):
-        lines.append(f"<b>Vibe:</b> {escape(persona['vibe'])}")
+        lines.append(f"<b>Vibe:</b> {_static_html(persona['vibe'])}")
     return "<br>".join(lines)
 
 

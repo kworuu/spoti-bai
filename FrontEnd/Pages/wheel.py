@@ -30,7 +30,7 @@ import spotipy
 import streamlit as st
 import streamlit.components.v1 as components
 from spotipy.cache_handler import CacheHandler
-from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuthth
+from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 
 # Must be the first Streamlit call.
 st.set_page_config(page_title="SPOTIBAI", page_icon="🎡", layout="wide")
@@ -765,9 +765,15 @@ if (PROVIDER === "youtube") {
   document.body.classList.add("yt");
   window.onYouTubeIframeAPIReady = () => {
     let loaded = TRACKS[0].uri;
+    let ytErrors = 0;    // songs in a row that refused to play
     const player = new YT.Player("embed", {
       width: 356, height: 200, videoId: TRACKS[0].uri.slice(3),      // uri = "yt:<videoId>"
-      playerVars: { playsinline: 1, rel: 0 },
+      playerVars: {
+        playsinline: 1, rel: 0,
+        // We run inside Streamlit's iframe, so tell YouTube which site the player is on
+        origin: window.parent.location.origin,
+        widget_referrer: window.parent.location.href,
+      },
       events: {
         onReady: () => {
           ctrl = {
@@ -776,6 +782,7 @@ if (PROVIDER === "youtube") {
             pause() { player.pauseVideo(); },
           };
           setInterval(() => {
+            if (player.getPlayerState() === YT.PlayerState.PLAYING) ytErrors = 0;
             onUpdate({ data: {
               isPaused: player.getPlayerState() !== YT.PlayerState.PLAYING,
               position: (player.getCurrentTime() || 0) * 1000,
@@ -786,7 +793,16 @@ if (PROVIDER === "youtube") {
           setTimeout(spin, 600);
         },
         // Some music videos don't allow embedding (errors 101/150): skip to the next song
-        onError: () => { if (!spinning && !dragging) setTimeout(nextSong, 400); },
+        onError: (e) => {
+          console.warn("YouTube player error", e.data, "on", loaded);   // 101/150 = embedding blocked, 153 = site not identified
+          ytErrors += 1;
+          if (ytErrors >= TRACKS.length) {           // every song refused: stop skipping
+            hintEl.textContent = "None of these songs can play outside YouTube.";
+            hintEl.style.display = "block";
+            return;
+          }
+          if (!spinning && !dragging) setTimeout(nextSong, 400);
+        },
       },
     });
   };
