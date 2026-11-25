@@ -24,22 +24,28 @@ FLOW = {
                 "To get started, I'll need to see your Spotify or YouTube Music.\n\n"
                 "I'm just gonna look at what you listen to.\n"
                 "I won't post or change anything."),
-        "options": [{"label": "Sounds good to me", "next": "login", "primary": True},
-                    {"label": "Oh, okay then", "next": "login"},
+        "options": [{"label": "Sounds good to me", "next": "lang", "primary": True},
+                    {"label": "Oh, okay then", "next": "lang"},
                     {"label": "Is this safe?", "next": "safe"}],
     },
     "safe": {
         "say": ("Yeah, for sure. We ain't stealing your data, but we're training ours.\n"
                 "If you're done, we can continue."),
-        "options": [{"label": "Bet, let's go", "next": "login", "primary": True},
-                    {"label": "Sure, why not", "next": "login"},
+        "options": [{"label": "Bet, let's go", "next": "lang", "primary": True},
+                    {"label": "Sure, why not", "next": "lang"},
                     {"label": "No, thanks", "next": "no"}],
     },
     "no": {
         "say": ("It's your loss, not mine....\n"
                 "I'm joking, please come back. Speed, I need thisss."),
-        "options": [{"label": "Alright, you win", "next": "login", "primary": True},
-                    {"label": "Okay okay, fine", "next": "login"}],
+        "options": [{"label": "Alright, you win", "next": "lang", "primary": True},
+                    {"label": "Okay okay, fine", "next": "lang"}],
+    },
+        "lang": {      
+        "step": "02",
+        "say": "Before I judge you: what language do I roast you in?",
+        "options": [{"label": "English", "next": "login", "set": ("lang", "en"), "primary": True},
+                    {"label": "Bisaya", "next": "login", "set": ("lang", "ceb")}],
     },
     "login": {
         "step": "02",
@@ -76,6 +82,8 @@ with editorial_card():
 if picked is not None:
     opt = node["options"][picked]
     ss.intro_log += [("ai", node["say"]), ("choices", [o["label"] for o in node["options"]], picked)]
+    if "set" in opt:
+        ss[opt["set"][0]] = opt["set"][1]
     if "go" in opt:
         st.switch_page(opt["go"])
     ss.intro_node = opt["next"]
