@@ -206,32 +206,28 @@ if not wheel:
 
 
 # ---------------------------------------------------------------------------
-# 3. Chat content — BACKEND HOOK
+# 3. Roast (P4) — profile + stats + AI roast, once per login and language
 # ---------------------------------------------------------------------------
-def get_opening_messages(songs):
-    """What SPOTIBAI shows first.
+from BackEnd.roast import make_roast                      # noqa: E402
+from BackEnd.sources.spotify import fetch_profile         # noqa: E402
+from BackEnd.stats import compute_all                     # noqa: E402
+from FrontEnd.UI.roast_chat import chat_panel, init_chat_state  # noqa: E402
 
-    TODO (backend): replace this with the real AI roast built from `songs`
-    (each song has name, artist, album, release_date, uri).
-    Return a list of messages:
-        {"role": "bot",  "text": "..."}                    → plain text on the left
-        {"role": "user", "text": "...", "tone": "dark"}    → black bubble on the right
-        {"role": "user", "text": "...", "tone": "grey"}    → grey bubble on the right
-    The placeholders below are the Figma copy.
-    """
-    return [
-        {"role": "bot", "text": "You’re pretty much a tiktok music enjoyer bruh…\n"
-                                "Have your own personality….\n"
-                                "Not that it’s not good."},
-        {"role": "bot", "text": "Overall rate would be 7/10"},
-        {"role": "user", "text": "Oh, you dont define me", "tone": "dark"},
-        {"role": "user", "text": "Thanks I guess.", "tone": "grey"},
-        {"role": "bot", "text": "Feisty, I like it!"},
-    ]
+if "profile" not in st.session_state:
+    try:
+        with st.spinner("Digging through your library…"):
+            st.session_state.profile = fetch_profile(sp)
+            st.session_state.stats = compute_all(st.session_state.profile)
+    except (spotipy.SpotifyException, requests.exceptions.RequestException) as e:
+        st.error(f"Couldn't read your listening history from Spotify: {e}")
+        st.button("Retry")
+        st.stop()
 
-
-if "opening_messages" not in st.session_state:
-    st.session_state.opening_messages = get_opening_messages(wheel)
+lang = st.session_state.get("lang", "en")              # set by the intro's language step
+if st.session_state.get("roast", {}).get("lang") != lang:
+    with st.spinner("Judging your music taste…" if lang == "en" else "Gi-judge imong music taste…"):
+        # 1 AI call (1 AK). Never raises: falls back to template lines if the AI fails.
+        init_chat_state(make_roast(st.session_state.profile, st.session_state.stats, lang))
 
 
 # ---------------------------------------------------------------------------
@@ -286,25 +282,7 @@ PAGE_HTML = """
   #embed-box { position: fixed; right: 0; bottom: 0; width: 300px; height: 80px;
                opacity: 0; pointer-events: none; }
 
-  /* Chat card — sits IN FRONT of the wheel on the right */
-  #chat { position: absolute; left: 600px; right: 100px; top: 32px; bottom: 32px; box-sizing: border-box;
-          border: 3px solid #000; border-radius: 22px; background: #FFF; padding: 44px 56px 40px;
-          display: flex; flex-direction: column; gap: 22px; cursor: default; touch-action: auto; user-select: text; }
-  #chat h1 { margin: 0; text-align: center; font-size: 46px; font-weight: 800; letter-spacing: .01em; }
-  #log { flex-grow: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 22px; }
-  .bot  { margin: 0; font-size: 19px; line-height: 1.4; white-space: pre-line; max-width: 720px; }
-  .row  { display: flex; justify-content: flex-end; }
-  .bubble { max-width: 560px; padding: 12px 20px; border-radius: 12px; color: #FFF;
-            font-size: 19px; line-height: 1.35; white-space: pre-line; }
-  .dark { background: #000000; }
-  .grey { background: #5F5B5B; }
-  #form { display: flex; gap: 12px; margin: 0; }
-  #msg  { flex-grow: 1; min-width: 0; height: 56px; box-sizing: border-box; border: none; border-radius: 12px;
-          background: #5F5B5B; color: #FFF; padding: 0 22px; font: 400 18px Inter, system-ui, sans-serif; }
-  #msg::placeholder { color: #E6E6E6; }
-  #send { height: 56px; min-width: 112px; border: none; border-radius: 12px; background: #000;
-          color: #FFF; font: 500 18px Inter, system-ui, sans-serif; cursor: pointer; }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* The chat card is no longer here: it's drawn by Streamlit (FrontEnd/UI/roast_chat.py). */
 </style>
 </head>
 <body>
@@ -369,16 +347,7 @@ PAGE_HTML = """
 
   <canvas id="viz" aria-hidden="true"></canvas>
   <div id="hint">Click anywhere to start the music</div>
-
-  <section id="chat" aria-label="Spotibai chat">
-    <h1>SPOTIBAI</h1>
-    <div id="log" aria-live="polite"></div>
-    <form id="form">
-      <label class="sr-only" for="msg">Reply to Spotibai</label>
-      <input id="msg" autocomplete="off" placeholder="Type your reply…">
-      <button id="send" type="submit">Send</button>
-    </form>
-  </section>
+  
 </div>
 <div id="embed-box"><div id="embed"></div></div>
 
@@ -386,7 +355,6 @@ PAGE_HTML = """
 /* ===================== data from Python ===================== */
 const TRACKS   = __TRACKS__;      // shuffled top songs
 const CLIP_MS  = __CLIP_MS__;     // how long each song plays
-const MESSAGES = __MESSAGES__;    // opening chat messages
 
 /* ===================== size everything to the window ===================== */
 const stage = document.getElementById("stage");
@@ -689,7 +657,7 @@ let dragStartPos = 0;
 
 stage.addEventListener("pointerdown", (e) => {
   if (e.button !== 0 && e.pointerType === "mouse") return;
-  if (chatEl.contains(e.target)) return;
+  if (chatEl && chatEl.contains(e.target)) return;
 
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   if (ctrl && !started && current >= 0) { switchedAt = performance.now(); ctrl.play(); }
@@ -781,49 +749,6 @@ window.onSpotifyIframeApiReady = (IFrameAPI) => {
   );
 };
 setTimeout(spin, 6000);
-
-/* ===================== chat ===================== */
-const log = document.getElementById("log");
-const history = [];
-
-function addMessage(m) {
-  history.push(m);
-  let node;
-  if (m.role === "bot") {
-    node = document.createElement("p");
-    node.className = "bot";
-    node.textContent = m.text;
-  } else {
-    node = document.createElement("div");
-    node.className = "row";
-    const b = document.createElement("div");
-    b.className = "bubble " + (m.tone === "grey" ? "grey" : "dark");
-    b.textContent = m.text;
-    node.appendChild(b);
-  }
-  log.appendChild(node);
-  log.scrollTop = log.scrollHeight;
-}
-MESSAGES.forEach(addMessage);
-
-async function getBotReply(text, history) {
-  return null;
-}
-
-document.getElementById("form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const input = document.getElementById("msg");
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = "";
-  addMessage({ role: "user", text: text, tone: "dark" });
-  try {
-    const reply = await getBotReply(text, history);
-    if (reply) addMessage({ role: "bot", text: reply });
-  } catch (err) {
-    addMessage({ role: "bot", text: "Couldn't reach SPOTIBAI right now." });
-  }
-});
 </script>
 <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
 </body>
@@ -836,8 +761,11 @@ def to_js(value):
     return json.dumps(value).replace("</", "<\\/")
 
 
+# The wheel HTML depends ONLY on the songs, so it is identical on every rerun and the
+# iframe (and the music) is never reloaded. Don't put anything that changes in here.
 html = (PAGE_HTML
         .replace("__TRACKS__", to_js(wheel))
-        .replace("__CLIP_MS__", str(CLIP_SECONDS * 1000))
-        .replace("__MESSAGES__", to_js(st.session_state.opening_messages)))
+        .replace("__CLIP_MS__", str(CLIP_SECONDS * 1000)))
 components.html(html, height=800)
+
+chat_panel()
