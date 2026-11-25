@@ -50,8 +50,10 @@ FLOW = {
     "login": {
         "step": "02",
         "say": "Sweet. Which one are we digging through?",
-        "options": [{"label": "Log in with Spotify", "go": GOOD, "brand": "spotify", "primary": True},
-                    {"label": "Log in with YouTube", "next": "youtube", "brand": "youtube"}],
+                "options": [{"label": "Log in with Spotify", "go": GOOD, "set": ("source", "spotify"),
+                     "brand": "spotify", "primary": True},
+                    {"label": "Log in with YouTube", "go": "FrontEnd/Pages/youtube_login.py",
+                     "set": ("source", "youtube"), "brand": "youtube"}],   # P7
     },
     "youtube": {   # YouTube Music is still in development, so the button works but explains that
         "step": "02",
@@ -84,6 +86,9 @@ if picked is not None:
     ss.intro_log += [("ai", node["say"]), ("choices", [o["label"] for o in node["options"]], picked)]
     if "set" in opt:
         ss[opt["set"][0]] = opt["set"][1]
+        if opt["set"][0] == "source":
+            for k in ("profile", "stats", "wheel", "me", "roast", "chat", "beat", "token_info"):
+                ss.pop(k, None)
     if "go" in opt:
         st.switch_page(opt["go"])
     ss.intro_node = opt["next"]

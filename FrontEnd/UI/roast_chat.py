@@ -132,7 +132,7 @@ def _render(m: dict) -> None:
             body = f'{img}<span><b>{escape(p["name"])}</b><br><small>{escape(p["artist"])}</small></span>'
             rows.append(f'<a class="rc-pick" href="{escape(p["url"])}" target="_blank" rel="noopener">{body}</a>'
                         if p.get("url") else f'<div class="rc-pick">{body}</div>')
-            st.markdown(f'<div class="rc-picks">{"".join(rows)}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="rc-picks">{"".join(rows)}</div>', unsafe_allow_html=True)
     elif m["role"] == "verdict":
         st.markdown(f'<div class="rc-verdict">{m["html"]}</div>', unsafe_allow_html=True)
     else:
@@ -170,7 +170,8 @@ def real_reply(text: str, lang: str) -> tuple[str, list[dict]]:
     from BackEnd.picks import resolve_picks
     ss = st.session_state
     r = reply(ss.profile, ss.stats, ss.roast, ss.chat, text, lang)
-    picks = resolve_picks(ss.sp, r["picks"]) if r["picks"] and ss.get("sp") else []
+    link = "youtube" if ss.get("source") == "youtube" else "spotify"
+    picks = resolve_picks(ss.sp, r["picks"], link=link) if r["picks"] and ss.get("sp") else []
     return r["reply"], picks
 
 
