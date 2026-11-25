@@ -78,7 +78,10 @@ st.session_state.reply_fn = preview_reply
 html, css = wheel_parts()
 if css:
     st.markdown(css, unsafe_allow_html=True)
-tracks = [{"name": f"Song {i}", "artist": "Preview", "uri": "", "image": "", "album": "", "release_date": ""}
+tracks = [{"name": f"Song {i}", "artist": "Preview", "uri": "yt:dQw4w9WgXcQ" if st.query_params.get("source") == "youtube" else "",
+           "image": "", "album": "", "release_date": ""}
           for i in range(10)]
-components.html(html.replace("__TRACKS__", json.dumps(tracks)).replace("__CLIP_MS__", "30000"), height=800)
+provider = st.query_params.get("source", "spotify")         # ?source=youtube shows the YouTube player box
+components.html(html.replace("__TRACKS__", json.dumps(tracks)).replace("__CLIP_MS__", "30000")
+                .replace("__PROVIDER__", json.dumps(provider)), height=800)
 chat_panel()

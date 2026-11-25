@@ -3,11 +3,14 @@
 The model can invent songs, so every pick is checked with Spotify search (works in Development
 Mode, no extra login scope). Picks that aren't found are dropped. Read-only: nothing is saved.
 """
+from urllib.parse import quote_plus
+
 from BackEnd.guard import MAX_PICKS
 
 
-def resolve_picks(sp, picks: list[dict]) -> list[dict]:
-    """[{"artist", "track"}] -> [{"name", "artist", "url", "image"}] for the ones Spotify knows."""
+def resolve_picks(sp, picks: list[dict], link: str = "spotify") -> list[dict]:
+    """[{"artist", "track"}] -> [{"name", "artist", "url", "image"}] for the ones Spotify knows.
+    link="youtube" makes each url a YouTube Music search for that song."""
     found, seen = [], set()
     for p in picks[:MAX_PICKS]:
         q = f'track:{p.get("track", "")[:80]} artist:{p.get("artist", "")[:80]}'
@@ -20,8 +23,10 @@ def resolve_picks(sp, picks: list[dict]) -> list[dict]:
         t = items[0]
         seen.add(t["uri"])
         imgs = (t.get("album") or {}).get("images") or []
-        found.append({"name": t["name"][:120],
-                      "artist": ", ".join(a["name"] for a in t.get("artists", [])[:2])[:120],
-                      "url": (t.get("external_urls") or {}).get("spotify", ""),
+        name = t["name"][:120]
+        artist = ", ".join(a["name"] for a in t.get("artists", [])[:2])[:120]
+        url = ((t.get("external_urls") or {}).get("spotify", "") if link == "spotify"
+               else "https://music.youtube.com/search?q=" + quote_plus(f"{name} {artist}"))
+        found.append({"name": name, "artist": artist, "url": url,
                       "image": imgs[-1]["url"] if imgs else ""})
     return found

@@ -345,33 +345,25 @@ def _show_bot_message(text: str, typing_step: int | None = None) -> None:
     )
 
 
-def _show_picks(picks: list[dict]) -> None:
-    rows = []
-    for pick in picks:
-        image = (
-            f'<img src="{escape(pick["image"])}" alt="">'
-            if pick.get("image")
-            else '<div class="rc-noimg"></div>'
-        )
-        body = f'{image}<span><b>{escape(pick["name"])}</b><br><small>{escape(pick["artist"])}</small></span>'
-        if pick.get("url"):
-            rows.append(f'<a class="rc-pick" href="{escape(pick["url"])}" target="_blank" rel="noopener">{body}</a>')
-        else:
-            rows.append(f'<div class="rc-pick">{body}</div>')
-    st.markdown(f'<div class="rc-picks">{"".join(rows)}</div>', unsafe_allow_html=True)
-
-
-def _show_message(message: dict) -> None:
-    role = message["role"]
-    if role == "bot":
-        _show_bot_message(message["text"])
-    elif role == "picks":
-        _show_picks(message["picks"])
-    elif role == "verdict":
-        st.markdown(f'<div class="rc-verdict">{message["html"]}</div>', unsafe_allow_html=True)
-    else:  # "choice" (a clicked reply button) or "user" (typed text)
-        text = message["labels"][message["picked"]] if role == "choice" else message["text"]
-        st.markdown(f'<div class="rc-me"><span>{escape(text)}</span></div>', unsafe_allow_html=True)
+def _render(m: dict) -> None:
+    if m["role"] == "bot":
+        _bot(m["text"])
+    elif m["role"] == "choice":          # only the reply they picked stays, as their own bubble
+        st.markdown(f'<div class="rc-me"><span>{escape(m["labels"][m["picked"]])}</span></div>',
+                    unsafe_allow_html=True)
+    elif m["role"] == "picks":
+        rows = [] 
+        for p in m["picks"]:
+            img = (f'<img src="{escape(p["image"])}" alt="">' if p.get("image")
+                   else '<div class="rc-noimg"></div>')
+            body = f'{img}<span><b>{escape(p["name"])}</b><br><small>{escape(p["artist"])}</small></span>'
+            rows.append(f'<a class="rc-pick" href="{escape(p["url"])}" target="_blank" rel="noopener">{body}</a>'
+                        if p.get("url") else f'<div class="rc-pick">{body}</div>')
+        st.markdown(f'<div class="rc-picks">{"".join(rows)}</div>', unsafe_allow_html=True)
+    elif m["role"] == "verdict":
+        st.markdown(f'<div class="rc-verdict">{m["html"]}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="rc-me"><span>{escape(m["text"])}</span></div>', unsafe_allow_html=True)
 
 
 def _verdict_html(roast: dict, lang: str) -> str:
@@ -379,11 +371,11 @@ def _verdict_html(roast: dict, lang: str) -> str:
     label = "Aux Cord Rating" if lang == "en" else "Aux Cord Rating mo"
     lines = [f'{label}: <b class="big">{escape(str(aux["score"]))}/10</b>']
     if aux.get("reason"):
-        lines.append(escape(aux["reason"]))
+        lines.append(_static_html(aux["reason"]))
     if persona.get("aesthetic"):
-        lines.append(f"<b>Aesthetic:</b> {escape(persona['aesthetic'])}")
+        lines.append(f"<b>Aesthetic:</b> {_static_html(persona['aesthetic'])}")
     if persona.get("vibe"):
-        lines.append(f"<b>Vibe:</b> {escape(persona['vibe'])}")
+        lines.append(f"<b>Vibe:</b> {_static_html(persona['vibe'])}")
     return "<br>".join(lines)
 
 
@@ -408,11 +400,11 @@ def real_reply(text: str, lang: str) -> tuple[str, list[dict]]:
     """AI reply plus song picks checked against Spotify. Returns (reply_text, picks)."""
     from BackEnd.chat import reply
     from BackEnd.picks import resolve_picks
-
-    state = st.session_state
-    result = reply(state.profile, state.stats, state.roast, state.chat, text, lang)
-    picks = resolve_picks(state.sp, result["picks"]) if result["picks"] and state.get("sp") else []
-    return result["reply"], picks
+    ss = st.session_state
+    r = reply(ss.profile, ss.stats, ss.roast, ss.chat, text, lang)
+    link = "youtube" if ss.get("source") == "youtube" else "spotify"
+    picks = resolve_picks(ss.sp, r["picks"], link=link) if r["picks"] and ss.get("sp") else []
+    return r["reply"], picks
 
 
 def init_chat_state(roast: dict) -> None:

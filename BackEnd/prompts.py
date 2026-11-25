@@ -26,6 +26,7 @@ BEAT_GUIDE = {
               "you can't even tell what era they're from.",
     "hours": "Roast WHEN they listen using hours.peak_hour (0-23, Manila time) and hours.night_owl (%). "
              "Never roast how many plays they have: Spotify only shares the last 50. "
+             "If source is \"youtube\", these are the hours they LIKE songs, not play them: say it that way. "
              "If total_plays is 0, joke that they barely play anything lately.",
     "then_now": "Roast how their taste changed using then_vs_now (new_obsessions, dropped, loyal, "
                 "shift 0-100). High shift = phase collector; low shift = stuck on repeat.",
@@ -91,6 +92,8 @@ def data_block(profile: ListeningProfile, stats: dict) -> dict:
         "then_vs_now": {"new_obsessions": c(tvn["new_obsessions"]), "dropped": c(tvn["dropped"]),
                         "loyal": c(tvn["loyal"]), "shift": tvn["shift"]},
         "gauges": {k: v for k, v in stats["gauges"].items() if v is not None},
+        **({"note": "YouTube Music: hours = when they like songs; no genres or release years"}
+           if profile.source == "youtube" else {}),
     }
 
 
