@@ -223,6 +223,7 @@ if "profile" not in st.session_state:
         st.button("Retry")
         st.stop()
 
+st.session_state.sp = sp    # the chat uses it to check song picks exist on Spotify
 lang = st.session_state.get("lang", "en")              # set by the intro's language step
 if st.session_state.get("roast", {}).get("lang") != lang:
     with st.spinner("Judging your music taste…" if lang == "en" else "Gi-judge imong music taste…"):

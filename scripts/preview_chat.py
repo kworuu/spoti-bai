@@ -61,6 +61,20 @@ if st.session_state.get("roast", {}).get("lang") != lang:
     roast["lang"] = lang
     init_chat_state(roast)
 
+
+
+def preview_reply(text: str, lang: str):
+    """Canned talk-back for the preview (0 AK). The real app uses BackEnd.chat.reply."""
+    if any(w in text.lower() for w in ("recommend", "suggest", "song", "kanta")):
+        return ("Fine. Here are picks that might fix you:" if lang == "en" else "Sige. Ani, basin ma-ayo ka:",
+                [{"name": "Preview Track", "artist": "Preview Artist", "url": "", "image": ""},
+                 {"name": "Another Track", "artist": "Someone Else", "url": "", "image": ""}])
+    return ("(preview) In the real app, GPT-6 Luna answers this." if lang == "en"
+            else "(preview) Sa tinuod nga app, si GPT-6 Luna ang motubag ani."), []
+
+
+st.session_state.reply_fn = preview_reply
+
 html, css = wheel_parts()
 if css:
     st.markdown(css, unsafe_allow_html=True)
