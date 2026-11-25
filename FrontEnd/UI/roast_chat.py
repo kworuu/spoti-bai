@@ -35,7 +35,7 @@ CSS = """
 /* message log: scrolls inside the card; _scroll_to_bottom() keeps the newest message in view */
 .st-key-rc_panel > [data-testid="stLayoutWrapper"]:has(> .st-key-rc_log){flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .st-key-rc_log{flex:1 1 auto;min-height:0;overflow-y:auto!important;display:block!important;scrollbar-width:thin;scrollbar-color:#bbb transparent}
-.st-key-rc_inner{gap:calc(24 * var(--u))!important;padding-right:6px;overflow:visible!important;flex-shrink:0!important;height:auto!important}
+.st-key-rc_inner{gap:calc(40 * var(--u))!important;padding-right:6px;overflow:visible!important;flex-shrink:0!important;height:auto!important}
 .rc-bot{margin:0;font-size:max(15px, calc(19 * var(--u)));line-height:1.55;white-space:pre-line;max-width:92%}
 .rc-me{display:flex;justify-content:flex-end;margin:0}
 .rc-me span{max-width:80%;padding:calc(10 * var(--u)) calc(18 * var(--u));border-radius:16px 16px 4px 16px;background:#000;color:#fff;
@@ -57,10 +57,20 @@ CSS = """
 [class*="st-key-rc_choices"] button:hover{background:#000!important;color:#fff!important}
 [class*="st-key-rc_choices"] [class*="st-key-rc_c"]:first-child button{background:#000!important;color:#fff!important}
 /* chat input in the card */
-.st-key-rc_panel [data-testid="stChatInput"]{border-radius:12px;background:#5F5B5B}
-.st-key-rc_panel [data-testid="stChatInput"] textarea{color:#fff;font-size:16px}
-.st-key-rc_panel [data-testid="stChatInput"] textarea::placeholder{color:#E6E6E6}
+.st-key-rc_panel [data-testid="stChatInput"]{border-radius:12px}
+.st-key-rc_panel [data-testid="stChatInput"] textarea{color:#000!important;-webkit-text-fill-color:#000;caret-color:#000;font-size:16px}
+.st-key-rc_panel [data-testid="stChatInput"] textarea::placeholder{color:#8A8A8A;-webkit-text-fill-color:#8A8A8A}
 .st-key-rc_js{position:absolute;height:0;overflow:hidden}
+
+/* song picks*/
+.rc-picks{margin:0;border:2px solid #000;border-radius:14px;padding:calc(8 * var(--u)) calc(14 * var(--u))}
+.rc-pick{display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid #E8E8EA;
+  font-size:max(14px, calc(17 * var(--u)));color:#000;text-decoration:none}
+.rc-pick:last-child{border-bottom:0}
+.rc-pick img,.rc-pick .rc-noimg{width:40px;height:40px;border-radius:6px;object-fit:cover;flex:none;background:#E8E8EA}
+.rc-pick span{flex:1;min-width:0}
+.rc-pick small{color:#5F5B5B}
+a.rc-pick:hover b{text-decoration:underline}
 </style>
 """
 
@@ -114,6 +124,15 @@ def _render(m: dict) -> None:
     elif m["role"] == "choice":          # only the reply they picked stays, as their own bubble
         st.markdown(f'<div class="rc-me"><span>{escape(m["labels"][m["picked"]])}</span></div>',
                     unsafe_allow_html=True)
+    elif m["role"] == "picks":
+        rows = [] 
+        for p in m["picks"]:
+            img = (f'<img src="{escape(p["image"])}" alt="">' if p.get("image")
+                   else '<div class="rc-noimg"></div>')
+            body = f'{img}<span><b>{escape(p["name"])}</b><br><small>{escape(p["artist"])}</small></span>'
+            rows.append(f'<a class="rc-pick" href="{escape(p["url"])}" target="_blank" rel="noopener">{body}</a>'
+                        if p.get("url") else f'<div class="rc-pick">{body}</div>')
+            st.markdown(f'<div class="rc-picks">{"".join(rows)}</div>', unsafe_allow_html=True)
     elif m["role"] == "verdict":
         st.markdown(f'<div class="rc-verdict">{m["html"]}</div>', unsafe_allow_html=True)
     else:
@@ -145,10 +164,14 @@ def _scroll_to_bottom(step: int) -> None:
             pass
 
 
-def placeholder_reply(text: str, lang: str) -> str:
-    """TODO (P6): replace with BackEnd.chat.reply(profile, stats, history, lang)."""
-    return ("Talk-back chat is coming soon. For now, I've said what I had to say."
-            if lang == "en" else "Moabot ra ang talk-back chat. Sa karon, nasulti na nako tanan.")
+def real_reply(text: str, lang: str) -> tuple[str, list[dict]]:
+    """P6: AI reply (1 AK) + song picks checked against Spotify. Returns (reply_text, picks)."""
+    from BackEnd.chat import reply
+    from BackEnd.picks import resolve_picks
+    ss = st.session_state
+    r = reply(ss.profile, ss.stats, ss.roast, ss.chat, text, lang)
+    picks = resolve_picks(ss.sp, r["picks"]) if r["picks"] and ss.get("sp") else []
+    return r["reply"], picks
 
 
 def init_chat_state(roast: dict) -> None:
@@ -196,6 +219,12 @@ def chat_panel() -> None:
             text = st.chat_input("Talk back to SpotiBai…" if lang == "en" else "Tubag sa SpotiBai…",
                                  max_chars=500, key="rc_input")
             if text:
-                ss.chat.append({"role": "user", "text": text})
-                ss.chat.append({"role": "bot", "text": placeholder_reply(text, lang)})
+                reply_fn = ss.get("reply_fn") or real_reply
+                with st.spinner("SpotiBai is typing…" if lang == "en" else "Nag-type si SpotiBai…"):
+                    answer, picks = reply_fn(text, lang)      # uses the chat BEFORE this message
+                if answer:
+                    ss.chat.append({"role": "user", "text": text})
+                    ss.chat.append({"role": "bot", "text": answer})
+                    if picks:
+                        ss.chat.append({"role": "picks", "picks": picks})
                 st.rerun(scope="fragment")

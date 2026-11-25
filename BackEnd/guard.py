@@ -93,3 +93,27 @@ def validate_roast(data: dict, canary: str, refusal: str) -> dict:
     if leaked(out["aux_cord"]["reason"], canary):
         out["aux_cord"]["reason"] = ""
     return out
+
+
+
+MAX_CHAT_REPLY_CHARS = 900       # ~150 words
+MAX_PICKS = 5
+
+
+def validate_chat(data: dict, canary: str, refusal: str) -> dict:
+    """Raw model JSON -> {"reply": str, "picks": [{"artist", "track"}]} or raise LLMError."""
+    if not isinstance(data, dict):
+        raise LLMError("Chat reply is not a JSON object")
+    reply = clean_text(data.get("reply"), MAX_CHAT_REPLY_CHARS)
+    if not reply:
+        raise LLMError("Chat reply is empty")
+    if leaked(reply, canary):
+        return {"reply": refusal, "picks": []}
+    picks = []
+    for p in data.get("picks") or []:
+        if not isinstance(p, dict):
+            continue
+        artist, track = clean_text(p.get("artist"), 80), clean_text(p.get("track"), 120)
+        if artist and track and not leaked(artist + track, canary):
+            picks.append({"artist": artist, "track": track})
+    return {"reply": reply, "picks": picks[:MAX_PICKS]}
