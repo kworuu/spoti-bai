@@ -30,7 +30,7 @@ import spotipy
 import streamlit as st
 import streamlit.components.v1 as components
 from spotipy.cache_handler import CacheHandler
-from spotipy.oauth2 import SpotifyOAuth
+from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 
 # Must be the first Streamlit call.
 st.set_page_config(page_title="SPOTIBAI", page_icon="🎡", layout="wide")
@@ -76,6 +76,10 @@ auth = SpotifyOAuth(
     open_browser=False,
     show_dialog=True,
 )
+# P7: which service this user logged in with ("youtube" is set by youtube_login.py)
+SOURCE = st.session_state.get("source", "spotify")
+if SOURCE == "youtube" and "profile" not in st.session_state:
+    st.switch_page("FrontEnd/Pages/youtube_login.py")      # their YouTube session was lost: log in again
 
 params = st.query_params
 
@@ -86,6 +90,9 @@ if "error" in params:  # user pressed "Cancel" on Spotify's login page
     st.rerun()
 
 if "code" in params:  # Spotify sent us back with a login code
+    # Leaving for Spotify's login page started a NEW session, so the roast language comes back in `state`
+    if params.get("state") in ("en", "ceb"):
+        st.session_state["lang"] = params["state"]
     try:
         auth.get_access_token(params["code"], as_dict=False, check_cache=False)
         st.session_state["login_failed"] = False
@@ -95,8 +102,8 @@ if "code" in params:  # Spotify sent us back with a login code
     st.query_params.clear()
     st.rerun()
 
-if not auth.validate_token(auth.cache_handler.get_cached_token()):
-    spotify_login_url = auth.get_authorize_url()
+if SOURCE == "spotify" and not auth.validate_token(auth.cache_handler.get_cached_token()):
+    spotify_login_url = auth.get_authorize_url(state=st.session_state.get("lang", "en"))
 
     # If the last try failed, stop and show why instead of jumping to Spotify again.
     if st.session_state.get("login_failed"):
@@ -118,7 +125,9 @@ if not auth.validate_token(auth.cache_handler.get_cached_token()):
 
 
 sp = spotipy.Spotify(
-    auth_manager=auth,
+    # YouTube users have no Spotify login: an app-only client is enough to check song picks (P7)
+    auth_manager=auth if SOURCE == "spotify" else SpotifyClientCredentials(
+        client_id=secrets["SPOTIFY_CLIENT_ID"], client_secret=secrets["SPOTIFY_CLIENT_SECRET"]),
     requests_timeout=20,   # wait up to 20 s instead of 5
     retries=3,             # try again automatically
 )
@@ -282,6 +291,11 @@ PAGE_HTML = """
   /* The Spotify player itself does the playing; it is kept out of sight. */
   #embed-box { position: fixed; right: 0; bottom: 0; width: 300px; height: 80px;
                opacity: 0; pointer-events: none; }
+  /* P7: YouTube's rules require a VISIBLE player of at least 200x200, so it sits bottom-left */
+  body.yt #embed-box { opacity: 1; pointer-events: auto; left: 16px; right: auto; bottom: 16px;
+               width: 356px; height: 200px; border-radius: 12px; overflow: hidden;
+               box-shadow: 0 10px 30px rgba(0,0,0,.45); z-index: 5; }
+  body.yt #embed-box iframe { width: 100%; height: 100%; display: block; border: 0; }
 
   /* The chat card is no longer here: it's drawn by Streamlit (FrontEnd/UI/roast_chat.py). */
 </style>
@@ -356,6 +370,7 @@ PAGE_HTML = """
 /* ===================== data from Python ===================== */
 const TRACKS   = __TRACKS__;      // shuffled top songs
 const CLIP_MS  = __CLIP_MS__;     // how long each song plays
+const PROVIDER = __PROVIDER__;    // "spotify" or "youtube" (P7)
 
 /* ===================== size everything to the window ===================== */
 const stage = document.getElementById("stage");
@@ -738,20 +753,76 @@ function spin() {
   });
 }
 
-window.onSpotifyIframeApiReady = (IFrameAPI) => {
-  IFrameAPI.createController(
-    document.getElementById("embed"),
-    { uri: TRACKS[0].uri, width: 300, height: 80 },
-    (c) => {
-      ctrl = c;
-      c.addListener("playback_update", onUpdate);
-      setTimeout(spin, 600);
-    }
-  );
-};
+function loadScript(src) {
+  const s = document.createElement("script");
+  s.src = src; s.async = true;
+  document.body.appendChild(s);
+}
+
+if (PROVIDER === "youtube") {
+  /* P7: a small adapter that makes the YouTube player look like Spotify's controller
+     (loadUri / play / pause + playback_update events), so the wheel code above is unchanged. */
+  document.body.classList.add("yt");
+  window.onYouTubeIframeAPIReady = () => {
+    let loaded = TRACKS[0].uri;
+    let ytErrors = 0;    // songs in a row that refused to play
+    const player = new YT.Player("embed", {
+      width: 356, height: 200, videoId: TRACKS[0].uri.slice(3),      // uri = "yt:<videoId>"
+      playerVars: {
+        playsinline: 1, rel: 0,
+        // We run inside Streamlit's iframe, so tell YouTube which site the player is on
+        origin: window.parent.location.origin,
+        widget_referrer: window.parent.location.href,
+      },
+      events: {
+        onReady: () => {
+          ctrl = {
+            loadUri(uri) { loaded = uri; player.cueVideoById(uri.slice(3)); },
+            play() { player.playVideo(); },
+            pause() { player.pauseVideo(); },
+          };
+          setInterval(() => {
+            if (player.getPlayerState() === YT.PlayerState.PLAYING) ytErrors = 0;
+            onUpdate({ data: {
+              isPaused: player.getPlayerState() !== YT.PlayerState.PLAYING,
+              position: (player.getCurrentTime() || 0) * 1000,
+              duration: (player.getDuration() || 0) * 1000,
+              playingURI: loaded,
+            } });
+          }, 500);
+          setTimeout(spin, 600);
+        },
+        // Some music videos don't allow embedding (errors 101/150): skip to the next song
+        onError: (e) => {
+          console.warn("YouTube player error", e.data, "on", loaded);   // 101/150 = embedding blocked, 153 = site not identified
+          ytErrors += 1;
+          if (ytErrors >= TRACKS.length) {           // every song refused: stop skipping
+            hintEl.textContent = "None of these songs can play outside YouTube.";
+            hintEl.style.display = "block";
+            return;
+          }
+          if (!spinning && !dragging) setTimeout(nextSong, 400);
+        },
+      },
+    });
+  };
+  loadScript("https://www.youtube.com/iframe_api");
+} else {
+  window.onSpotifyIframeApiReady = (IFrameAPI) => {
+    IFrameAPI.createController(
+      document.getElementById("embed"),
+      { uri: TRACKS[0].uri, width: 300, height: 80 },
+      (c) => {
+        ctrl = c;
+        c.addListener("playback_update", onUpdate);
+        setTimeout(spin, 600);
+      }
+    );
+  };
+  loadScript("https://open.spotify.com/embed/iframe-api/v1");
+}
 setTimeout(spin, 6000);
 </script>
-<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
 </body>
 </html>
 """
@@ -766,7 +837,8 @@ def to_js(value):
 # iframe (and the music) is never reloaded. Don't put anything that changes in here.
 html = (PAGE_HTML
         .replace("__TRACKS__", to_js(wheel))
-        .replace("__CLIP_MS__", str(CLIP_SECONDS * 1000)))
+        .replace("__CLIP_MS__", str(CLIP_SECONDS * 1000))
+        .replace("__PROVIDER__", json.dumps(SOURCE)))
 components.html(html, height=800)
 
 chat_panel()
