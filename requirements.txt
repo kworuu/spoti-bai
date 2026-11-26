@@ -2,3 +2,5 @@ streamlit>=1.40
 requests>=2.31
 spotipy>=2.24
 openai
+pillow>=13.0.0
+tzdata

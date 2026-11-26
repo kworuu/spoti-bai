@@ -127,6 +127,7 @@ sp = spotipy.Spotify(
         client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET),
     requests_timeout=20,   # wait up to 20 s instead of 5
     retries=3,             # try again automatically
+    status_retries=0,
 )
 
 if "me" not in st.session_state:
@@ -163,12 +164,24 @@ from FrontEnd.UI.roast_chat import chat_panel, init_chat_state  # noqa: E402
 lang = st.session_state.get("lang", "en")              # set by the intro's language step
 loader = LoadingScreen(lang)                           # full-screen loader for the fetches below
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def cached_profile(user_id: str, _sp):          # "_sp" = not part of the cache key
+    return fetch_profile(_sp)
+
 if "profile" not in st.session_state:
     try:
         loader.show(0)
-        st.session_state.profile = fetch_profile(sp)
+        st.session_state.profile = cached_profile(me["id"], sp)
         loader.show(1)
         st.session_state.stats = compute_all(st.session_state.profile)
+    except spotipy.SpotifyException as e:
+        loader.hide()
+        if e.http_status == 429:
+            st.error("Spotify says we've made too many requests. Wait a while, then press Retry.")
+        else:
+            st.error(f"Spotify error ({e.http_status}): {e.msg}")
+        st.button("Retry")
+        st.stop()
     except (spotipy.SpotifyException, requests.exceptions.RequestException) as e:
         loader.hide()
         st.error(f"Couldn't read your listening history from Spotify: {e}")

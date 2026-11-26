@@ -16,7 +16,7 @@ from BackEnd.models import Artist, ListeningProfile, Play, Playlist, Saved, Trac
 SCOPE = ("user-top-read user-read-recently-played user-library-read "
          "playlist-read-private playlist-read-collaborative")
 NAME_MAX, ARTIST_MAX = 120, 80   # cap untrusted text before it ever reaches a prompt
-SAVED_PAGES = 10                 # 10 x 50 = newest 500 saved songs
+SAVED_PAGES = 4                 # 4 x 50 = newest 200 saved songs
 PLAYLISTS_READ = 5               # read the contents of their 5 biggest own playlists
 PLAYLIST_ITEMS = 100             # first 100 songs of each
 

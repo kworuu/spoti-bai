@@ -25,6 +25,7 @@ MARKET = "PH"
 QUERIES = ["newjeans", "opm", "bisaya", "k-pop", "indie pop", "hip hop", "r&b", "rock",
            "pop", "lofi", "edm", "jazz", "year:2025", "year:2026"]   # 10 albums each, run in parallel
 CACHE_FILE = Path(__file__).parent / ".cache" / "covers.json"
+STATIC_FILE = Path(__file__).resolve().parents[1] / "static" / "covers.json"   # committed: 0 API calls
 FRESH_FOR = 24 * 3600  # seconds before the cached list is refreshed in the background
 
 log = logging.getLogger("spotibai")
@@ -110,6 +111,12 @@ def _credentials() -> tuple[str, str]:
 def get_covers(limit: int = 30) -> list[dict]:
     """Returns [{"m": 300px url, "s": 64px url}, ...] or [] on failure (UI shows empty boxes).
     If the cache holds fewer covers than `limit` (you raised the count), it is refetched once."""
+    try:
+        static = json.loads(STATIC_FILE.read_text("utf-8"))["covers"]
+        if static:
+            return static[:limit]
+    except (OSError, ValueError, KeyError):
+        pass
     global _refreshing
     now = time.time()
     if now < _mem.get("fail_until", 0):
@@ -137,7 +144,7 @@ def get_covers(limit: int = 30) -> list[dict]:
         fresh = _fetch_remote(cid, secret, limit)
     except Exception as e:
         log.warning("Could not load album covers: %s", e)
-        _mem["fail_until"] = now + 60  # don't retry on every rerun
+        _mem["fail_until"] = now + 3600  # don't retry on every rerun
         return covers[:limit] if covers else []
     ts = time.time()
     _mem.update(covers=fresh, ts=ts, limit=limit)
