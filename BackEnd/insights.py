@@ -100,7 +100,6 @@ def habits(p: ListeningProfile) -> dict:
     known_explicit = [t.explicit for t in pool if t.explicit is not None]
     lengths = [t.duration_ms for t in pool if t.duration_ms]
     types = [t.album_type for t in pool if t.album_type]
-    countries = Counter(t.isrc[:2].upper() for t in pool if len(t.isrc) >= 2)
 
     avg = round(mean(lengths) / 1000) if lengths else None
     return {
@@ -109,9 +108,6 @@ def habits(p: ListeningProfile) -> dict:
         "avg_length": f"{avg // 60}:{avg % 60:02d}" if avg else None,
         "singles_pct": _pct(types.count("single"), len(types)),
         "collab_pct": _pct(sum(1 for t in pool if len(t.artists) > 1), len(pool)),
-        # ISRC country = where the recording was REGISTERED (close to, not exactly, the artist's country)
-        "local_pct": _pct(countries.get("PH", 0), sum(countries.values())),
-        "countries": [c for c, _ in countries.most_common(3)],
     }
 
 

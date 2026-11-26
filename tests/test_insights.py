@@ -8,9 +8,9 @@ from BackEnd.sources import spotify
 NOW = datetime(2026, 11, 26, 4, 0, tzinfo=timezone.utc)          # Thursday, 12:00 noon in Manila
 
 
-def t(name, artist, explicit=False, ms=200_000, kind="album", isrc="USAB12300001", n=0, extra_artist=None):
+def t(name, artist, explicit=False, ms=200_000, kind="album", n=0, extra_artist=None):
     return Track(name, [artist] + ([extra_artist] if extra_artist else []), "Alb", 2024,
-                 f"spotify:track:{name}{n}", "", explicit, ms, kind, isrc)
+                 f"spotify:track:{name}{n}", "", explicit, ms, kind)
 
 
 def profile(**kw):
@@ -40,10 +40,10 @@ def test_core_falls_back_to_year_when_data_is_thin():
 
 # ---------- habits ----------
 def test_habits_from_song_details():
-    pool = [t("Ditto (Sped Up)", "A", explicit=True, ms=120_000, kind="single", isrc="KRA402200001", n=1),
-            t("Ditto - Slowed + Reverb", "A", ms=180_000, kind="single", isrc="KRA402200002", n=2),
-            t("Kathang Isip", "Ben&Ben", ms=300_000, isrc="PHA211900001", n=3, extra_artist="Moira"),
-            t("Love Story (Taylor's Version)", "Taylor Swift", ms=240_000, isrc="USUG12100001", n=4)]
+    pool = [t("Ditto (Sped Up)", "A", explicit=True, ms=120_000, kind="single", n=1),
+            t("Ditto - Slowed + Reverb", "A", ms=180_000, kind="single", n=2),
+            t("Kathang Isip", "Ben&Ben", ms=300_000, n=3, extra_artist="Moira"),
+            t("Love Story (Taylor's Version)", "Taylor Swift", ms=240_000, n=4)]
     h = insights.habits(profile(top_tracks_now=pool))
     assert h["tags"]["sped_up"]["pct"] == 25 and h["tags"]["slowed"]["pct"] == 25
     assert "taylors_version" in h["tags"]
