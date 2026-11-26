@@ -345,14 +345,14 @@ def _show_bot_message(text: str, typing_step: int | None = None) -> None:
     )
 
 
-def _render(m: dict) -> None:
+def _show_message(m: dict) -> None:
     if m["role"] == "bot":
-        _bot(m["text"])
-    elif m["role"] == "choice":          # only the reply they picked stays, as their own bubble
+        _show_bot_message(m["text"])          # was _bot(...)
+    elif m["role"] == "choice":
         st.markdown(f'<div class="rc-me"><span>{escape(m["labels"][m["picked"]])}</span></div>',
                     unsafe_allow_html=True)
     elif m["role"] == "picks":
-        rows = [] 
+        rows = []
         for p in m["picks"]:
             img = (f'<img src="{escape(p["image"])}" alt="">' if p.get("image")
                    else '<div class="rc-noimg"></div>')
@@ -365,19 +365,17 @@ def _render(m: dict) -> None:
     else:
         st.markdown(f'<div class="rc-me"><span>{escape(m["text"])}</span></div>', unsafe_allow_html=True)
 
-
 def _verdict_html(roast: dict, lang: str) -> str:
     aux, persona = roast["aux_cord"], roast["persona"]
     label = "Aux Cord Rating" if lang == "en" else "Aux Cord Rating mo"
     lines = [f'{label}: <b class="big">{escape(str(aux["score"]))}/10</b>']
     if aux.get("reason"):
-        lines.append(_static_html(aux["reason"]))
+        lines.append(_plain_html(aux["reason"]))
     if persona.get("aesthetic"):
-        lines.append(f"<b>Aesthetic:</b> {_static_html(persona['aesthetic'])}")
+        lines.append(f"<b>Aesthetic:</b> {_plain_html(persona['aesthetic'])}")
     if persona.get("vibe"):
-        lines.append(f"<b>Vibe:</b> {_static_html(persona['vibe'])}")
+        lines.append(f"<b>Vibe:</b> {_plain_html(persona['vibe'])}")
     return "<br>".join(lines)
-
 
 def _scroll_to_bottom(step: int) -> None:
     """Keep the log scrolled to the newest message while Streamlit finishes layout/animation.
