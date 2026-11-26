@@ -133,3 +133,9 @@ def test_prompt_data_hides_unknowns_and_full_name(make_profile):
     assert data["display_name"] == "Charles"
     assert data["CORE"]["genres"] == "unknown"
     assert "Genre Range" not in data["gauges"]
+
+def test_tone_allows_profanity_but_keeps_hard_limits():
+    for s in (prompts.roast_system_prompt("en", "SB-x"), prompts.chat_system_prompt("ceb", "SB-x")):
+        assert "fuck" in s and "profanity is allowed" in s
+        assert "no slurs" in s and "never aim a swear AT the person" in s
+        assert "not a real person" in s and "SB-x" in s

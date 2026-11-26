@@ -50,8 +50,7 @@ def to_track(t: dict | None) -> Track | None:
                  image=_image(album.get("images")),
                  explicit=t.get("explicit"),
                  duration_ms=t.get("duration_ms"),
-                 album_type=str(album.get("album_type") or ""),
-                 isrc=str((t.get("external_ids") or {}).get("isrc") or "")[:12])
+                 album_type=str(album.get("album_type") or ""))
 
 
 def to_artist(a: dict) -> Artist:

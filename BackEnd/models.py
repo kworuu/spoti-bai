@@ -3,7 +3,7 @@
 Fields a source can't provide stay at their defaults (None / "" / []), and every stat treats
 that as "unknown" instead of zero. Old saved profiles (tests/fixtures/*.json) still load.
 """
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 
 
@@ -19,7 +19,6 @@ class Track:
     explicit: bool | None = None
     duration_ms: int | None = None
     album_type: str = ""             # "single" | "album" | "compilation"
-    isrc: str = ""                   # first 2 letters = country where the recording was registered
 
 
 @dataclass
@@ -73,16 +72,18 @@ class ListeningProfile:
 
     @classmethod
     def from_dict(cls, d: dict) -> "ListeningProfile":
-        tracks = lambda xs: [Track(**t) for t in xs]
+        known = {f.name for f in fields(Track)}
+        tr = lambda t: Track(**{k: v for k, v in t.items() if k in known})   # ignore fields we dropped
+        tracks = lambda xs: [tr(t) for t in xs]
         return cls(
             source=d["source"], display_name=d["display_name"],
             top_tracks_now=tracks(d.get("top_tracks_now", [])),
             top_tracks_long=tracks(d.get("top_tracks_long", [])),
             top_artists_now=[Artist(**a) for a in d.get("top_artists_now", [])],
             top_artists_long=[Artist(**a) for a in d.get("top_artists_long", [])],
-            recent_plays=[Play(Track(**p["track"]), datetime.fromisoformat(p["at"]), p.get("context", ""))
+            recent_plays=[Play(tr(p["track"]), datetime.fromisoformat(p["at"]), p.get("context", ""))
                           for p in d.get("recent_plays", [])],
-            saved=[Saved(Track(**s["track"]), datetime.fromisoformat(s["at"])) for s in d.get("saved", [])],
+            saved=[Saved(tr(s["track"]), datetime.fromisoformat(s["at"])) for s in d.get("saved", [])],
             playlists=[Playlist(**{**pl, "tracks": tracks(pl.get("tracks", []))})
                        for pl in d.get("playlists", [])],
         )
