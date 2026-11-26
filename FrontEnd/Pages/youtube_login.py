@@ -61,7 +61,7 @@ if "code" in params:                                    # back from Google with 
 url = youtube.authorize_url(state=ss.get("lang", "en"))
 components.html(
     "<script>const s=window.parent.document.createElement('script');"
-    f"s.textContent='window.location.href='+{json.dumps(json.dumps(url))};"
+    f"s.textContent='window.top.location.href='+{json.dumps(json.dumps(url))};"
     "window.parent.document.head.appendChild(s);</script>",
     height=0,
 )
