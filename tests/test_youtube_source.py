@@ -105,3 +105,14 @@ def test_picks_link_to_youtube_music():
                                           "artists": [{"name": "Band"}], "album": {"images": []}}]}}
     out = resolve_picks(Search(), [{"artist": "Band", "track": "Song"}], link="youtube")
     assert out[0]["url"] == "https://music.youtube.com/search?q=Song+Band"
+
+def test_wheel_follows_taste_not_just_newest_likes():
+    from BackEnd.models import Artist, ListeningProfile, Track
+    song = lambda n, a: Track(name=n, artists=[a], album="", year=None, uri=f"yt:{n}", image="")
+    p = ListeningProfile(source="youtube", display_name="x",
+                         top_artists_now=[Artist("Slowdive"), Artist("Random")],
+                         top_artists_long=[Artist("Tokyo Shoegazer"), Artist("Slowdive")],
+                         top_tracks_now=[song(f"new{i}", "Random") for i in range(8)] + [song("sd1", "Slowdive")],
+                         top_tracks_long=[song("sd2", "Slowdive"), song("ts1", "Tokyo Shoegazer")])
+    names = [s["name"] for s in youtube.wheel_songs(p, n=4)]
+    assert names[0] == "sd1" and "ts1" in names     # core first, older favourite not crowded out

@@ -293,9 +293,8 @@ PAGE_HTML = """
   #embed-box { position: fixed; right: 0; bottom: 0; width: 300px; height: 80px;
                opacity: 0; pointer-events: none; }
   /* P7: YouTube's rules require a VISIBLE player of at least 200x200, so it sits bottom-left */
-  body.yt #embed-box { opacity: 1; pointer-events: auto; left: 16px; right: auto; bottom: 16px;
-               width: 356px; height: 200px; border-radius: 12px; overflow: hidden;
-               box-shadow: 0 10px 30px rgba(0,0,0,.45); z-index: 5; }
+  body.yt #embed-box { opacity: 0; pointer-events: none; left: 0; right: auto; bottom: 0;
+               width: 356px; height: 200px; }
   body.yt #embed-box iframe { width: 100%; height: 100%; display: block; border: 0; }
 
   /* The chat card is no longer here: it's drawn by Streamlit (FrontEnd/UI/roast_chat.py). */

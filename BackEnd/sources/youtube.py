@@ -18,6 +18,7 @@ from urllib.parse import urlencode
 import requests
 
 from BackEnd.config import get_secret
+from BackEnd.insights import layers
 from BackEnd.models import Artist, ListeningProfile, Play, Saved, Track
 from BackEnd.sources.spotify import ARTIST_MAX, NAME_MAX
 
@@ -163,7 +164,29 @@ def fetch_profile(token: str, get=requests.get, now: datetime | None = None) -> 
 
 
 def wheel_songs(profile: ListeningProfile, n: int = 10) -> list[dict]:
-    """The wheel's song dicts (same keys as wheel.py's Spotify songs). uri = 'yt:<videoId>'."""
-    tracks = (profile.top_tracks_now + profile.top_tracks_long)[:n]
+    """The wheel's song dicts (same keys as wheel.py's Spotify songs). uri = 'yt:<videoId>'.
+
+    YouTube has no play counts, so "newest likes" would just be whatever you liked last.
+    Instead the wheel follows the same taste layers as the chat: one song per CORE artist,
+    then older favourites and the current PHASE in turns, then PAST, then a 2nd song each,
+    then the rest of the likes."""
+    pool = profile.top_tracks_now + profile.top_tracks_long        # newest likes first
+    lay = layers(profile)
+    year = [a.name for a in profile.top_artists_long]
+    mixed = [a for pair in zip(year, lay["phase"]) for a in pair]          # older top, current phase, ...
+    mixed += year[len(lay["phase"]):] + lay["phase"][len(year):]           # whatever is left over
+    artists = list(dict.fromkeys(lay["core"] + mixed + lay["past_artists"]))
+
+    picked, used = [], set()
+    for rnd in range(2):                        # round 1: 1 song each, round 2: a 2nd song each
+        for a in artists:
+            if len(picked) >= n:
+                break
+            t = next((t for t in pool if t.uri not in used and a in t.artists), None)
+            if t:
+                picked.append(t)
+                used.add(t.uri)
+    picked += [t for t in pool if t.uri not in used][: n - len(picked)]     # top up
+
     return [{"name": t.name, "artist": ", ".join(t.artists), "uri": t.uri, "image": t.image,
-             "album": t.album, "release_date": ""} for t in tracks]
+             "album": t.album, "release_date": ""} for t in picked[:n]]
