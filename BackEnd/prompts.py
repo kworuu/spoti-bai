@@ -21,16 +21,18 @@ REFUSAL = {
 
 BEAT_GUIDE = {
     "greet": "Greet them by display_name and tease that you've seen their library.",
-    "artists": "Roast their top artists/tracks. Name at least one real **Artist** from DATA.",
-    "decade": "Roast their home decade (decades.home, decades.share). If home is null, joke that "
-              "you can't even tell what era they're from.",
+    "artists": "Roast their CURRENT obsession: NOW.obsession artists, NOW.on_repeat songs and NOW.genres. "
+                "Name at least one real **Artist** from NOW. Do NOT bring up PAST here.",
+    "decade": "Roast their home decade, preferring NOW.decade (overall: decades.home, decades.share). "
+                "If there is no decade, joke that you can't even tell what era they're from.",
     "hours": "Roast WHEN they listen using hours.peak_hour (0-23, Manila time) and hours.night_owl (%). "
              "Never roast how many plays they have: Spotify only shares the last 50. "
              "If source is \"youtube\", these are the hours they LIKE songs, not play them: say it that way. "
              "If total_plays is 0, joke that they barely play anything lately.",
-    "then_now": "Roast how their taste changed using then_vs_now (new_obsessions, dropped, loyal, "
-                "shift 0-100). High shift = phase collector; low shift = stuck on repeat.",
-    "persona": "Describe their aesthetic and emotional vibe in one playful line (roast tone, not therapy).",
+    "then_now": "The ONLY beat for PAST: roast how their taste changed (PAST.genres, PAST.decade, "
+                "then_vs_now.dropped vs NOW). Frame PAST as history: 'you USED to...'. "
+                "High shift = phase collector; low shift = stuck on repeat.",
+    "persona":  "Describe their aesthetic and emotional vibe in one playful line (roast tone, not therapy).",
 }
 
 SYSTEM_ROAST = """You are SpotiBai, a blunt, funny online music critic who roasts people's music taste.
@@ -54,6 +56,8 @@ RULES
    completely", "barely a night owl"). Plain percentages are fine once per beat.
 10. If a value is null or "unknown", don't mention it at all.
 11. Address them by display_name only (it's already a short first name).
+12. NOW is who they are today: lead with it. PAST is what they used to play: only mention it in the
+    "then_now" beat, and always in the past tense. Never present a PAST genre or artist as current.
 
 BEATS (write them in this order, one object each):
 {beat_lines}
@@ -84,9 +88,14 @@ def data_block(profile: ListeningProfile, stats: dict) -> dict:
     return {
         "source": profile.source,
         "display_name": first_name(profile.display_name),
-        "top_artists": c(stats["top"]["artists"]),
-        "top_tracks": c(stats["top"]["tracks"], 160),
-        "genres": c(stats["genres"]["top"], 40) or "unknown",
+        # NOW = what they play today (lead with this). PAST = what faded (then_now beat only).
+        "NOW": {"obsession": c(stats["current"]["artists"]),
+                "on_repeat": c(stats["current"]["on_repeat"], 160),
+                "top_tracks": c(stats["top"]["tracks"], 160),
+                "genres": c(stats["genres_split"]["now"], 40) or "unknown",
+                "decade": stats["decade_split"]["now"]},
+        "PAST": {"genres": c(stats["genres_split"]["then"], 40),
+                 "decade": stats["decade_split"]["then"]},
         "decades": stats["decades"],
         "hours": {k: stats["hours"][k] for k in ("peak_hour", "night_owl", "total_plays")},
         "then_vs_now": {"new_obsessions": c(tvn["new_obsessions"]), "dropped": c(tvn["dropped"]),
