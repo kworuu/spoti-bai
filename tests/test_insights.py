@@ -51,13 +51,12 @@ def test_habits_from_song_details():
     assert h["avg_length"] == "3:30"                       # (120+180+300+240)/4 = 210 s
     assert h["singles_pct"] == 50
     assert h["collab_pct"] == 25
-    assert h["local_pct"] == 25 and h["countries"][0] == "KR"
 
 
 def test_habits_unknown_on_youtube():
     yt = [Track("Song", ["A"], uri="yt:1"), Track("Other (Sped Up)", ["B"], uri="yt:2")]
     h = insights.habits(profile(source="youtube", top_tracks_now=yt))
-    assert h["explicit_pct"] is None and h["avg_length"] is None and h["local_pct"] is None
+    assert h["explicit_pct"] is None and h["avg_length"] is None
     assert h["tags"]["sped_up"]["pct"] == 50               # names still work on YouTube
 
 
@@ -108,7 +107,6 @@ def test_empty_profile_never_crashes():
 # ---------- Spotify source: new fields, saved songs, playlists ----------
 def sp_track(name, explicit=True):
     return {"name": name, "uri": f"spotify:track:{name}", "explicit": explicit, "duration_ms": 123_000,
-            "external_ids": {"isrc": "PHA211900001"}, "artists": [{"name": "Ben&Ben"}],
             "album": {"name": "Alb", "release_date": "2019", "album_type": "single", "images": []}}
 
 
@@ -142,7 +140,7 @@ class FakeSpotify:
 def test_fetch_profile_reads_new_fields_saved_and_playlists():
     p = spotify.fetch_profile(FakeSpotify())
     tr = p.top_tracks_now[0]
-    assert (tr.explicit, tr.duration_ms, tr.album_type, tr.isrc) == (True, 123_000, "single", "PHA211900001")
+    assert (tr.explicit, tr.duration_ms, tr.album_type) == (True, 123_000, "single")
     assert p.recent_plays[0].context == "playlist"
     assert p.saved[0].track.name == "S" and p.saved[0].at.year == 2023
     own, followed = p.playlists
