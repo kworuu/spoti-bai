@@ -51,7 +51,7 @@ SCOPE = ("user-top-read user-read-recently-played user-library-read "
 # ---- Settings you can change ------------------------------------------------
 TOP_N = 10                  # songs on the wheel
 CLIP_SECONDS = 30           # how long each song plays (30 or 60)
-USE_WEB_PLAYBACK = True     # Premium Spotify users play through the Web Playback SDK (volume + fades).
+USE_WEB_PLAYBACK = False     # Premium Spotify users play through the Web Playback SDK (volume + fades).
                             # False = everyone uses the old embed player (the safe fallback).
 TIME_RANGE = "medium_term"  # "short_term" = last 4 weeks, "medium_term" = ~6 months, "long_term" = all time
 # -----------------------------------------------------------------------------
@@ -156,11 +156,13 @@ if "me" not in st.session_state:
         st.stop()
 me = st.session_state.me
 
-# Web Playback SDK: only for Spotify Premium (free accounts keep the embed player).
+# Web Playback SDK (needs Spotify Premium). We can't check Premium up front: since Feb 2026 Spotify
+# no longer sends the "product" field to Development Mode apps. So every Spotify user TRIES the SDK;
+# a free account gets an "account_error" from Spotify and the page falls back to the embed player.
 # The token is captured ONCE per login so the wheel HTML (and the music) never reloads on reruns.
 # Access tokens last 1 hour; after that the page says to refresh.
 SDK_TOKEN = ""
-if SOURCE == "spotify" and USE_WEB_PLAYBACK and me.get("product") == "premium":
+if SOURCE == "spotify" and USE_WEB_PLAYBACK:
     if "sdk_token" not in st.session_state:
         st.session_state.sdk_token = (auth.get_cached_token() or {}).get("access_token", "")
     SDK_TOKEN = st.session_state.sdk_token
@@ -968,6 +970,7 @@ function startWebPlayback(fallbackToEmbed) {
       if (handedOver) return;
       handedOver = true;
       clearTimeout(giveUp);
+      console.info("[SpotiBai] Web Playback SDK ready: volume + fades on");
       ctrl = makeSdkController(player, device_id);
       document.body.classList.add("sdk");
       startPending();
