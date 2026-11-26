@@ -65,4 +65,5 @@ components.html(
     "window.parent.document.head.appendChild(s);</script>",
     height=0,
 )
-st.caption("Taking you to Google…")
+st.caption("Taking you to Google… If nothing happens, use the button.")
+st.link_button("Continue to Google", url, type="primary")

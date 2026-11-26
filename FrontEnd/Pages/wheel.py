@@ -117,6 +117,7 @@ if SOURCE == "spotify" and not auth.validate_token(auth.cache_handler.get_cached
         """,
         height=0,
     )
+    st.link_button("Log in with Spotify", spotify_login_url, type="primary")
     st.stop()
 
 
