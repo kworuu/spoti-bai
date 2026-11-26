@@ -130,7 +130,7 @@ header[data-testid="stHeader"] {
 
     clip-path: inset(0 100% 0 0);
 
-    animation: typing 2.8s steps(27, end) 0.6s forwards;
+    animation: typing 1.5s steps(27, end) 0.2s forwards;
 }
 
 @keyframes typing {
@@ -189,7 +189,7 @@ div[data-testid="stButton"] button {
 
     opacity: 0;
 
-    animation: fadeIn 1.5s ease 3.4s forwards;
+    animation: fadeIn 0.6s ease 1.8s forwards;
 
     transition:
         background-color 0.3s ease,
@@ -370,8 +370,8 @@ with left_hero:
         'Your playlist our judgment.'
         '</div>'
         '<div class="hero-title">'
-        'IS YOUR MUSIC </br>TASTE A'
-        '<span class="highlight">CHUD?</span>'
+        'IS YOUR MUSIC </br>TASTE '
+        '<span class="highlight">GARBAGE?</span>'
         '</div>'
         '</div>'
     )
@@ -424,7 +424,7 @@ with right_grid:
     col4 = album_column(
         album_image("07.jpg", 0.97) +
         album_image("08.jpg", 1.09) +
-        '<div class="vinyl-record"></div>' +
+        album_image("14.jpg", 1.29) +
         album_image("09.jpg", 1.45),
         spacer=15
     )

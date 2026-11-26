@@ -91,9 +91,38 @@ DARK_AFTER = 3                        # from the 3rd "no" on, the page goes blac
 # Meme + dark styles go into the page's FIRST style tag, so they're active before anything redraws.
 meme = ss.intro_node in REJECT_NODES
 angry = meme and ss.no_clicks >= DARK_AFTER
+
+def flash_css(step):
+    """Crispy red flash: snaps on, holds, snaps off, rests."""
+    return f"""
+.stApp::after {{
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: #FF3B30;
+  opacity: 0;
+  animation: angry-flash-{step} 0.2s linear infinite;
+}}
+@keyframes angry-flash-{step} {{
+  0%   {{ opacity: 0; }}
+  5%   {{ opacity: 0.5; }}
+  45%  {{ opacity: 0.5; }}
+  50%  {{ opacity: 0; }}
+  100% {{ opacity: 0; }}
+}}
+header[data-testid="stHeader"] {{ z-index: 1 !important; }}
+@media (prefers-reduced-motion: reduce) {{
+  .stApp::after {{ animation: none; opacity: 0.15; }}
+}}
+"""
+
 setup_editorial_page("SpotiBai", extra_css=(
     (pushy_css(step, yes_index=0, no_index=1, no_clicks=ss.no_clicks) if meme else "")
-    + dark_css(angry)))
+    + dark_css(angry)
+    + (flash_css(step) if angry else "")))
+
 horror_music(angry, step)             # plays while dark, fades out after "Alright, you win"
 
 with editorial_card():
@@ -123,3 +152,6 @@ if picked is not None:
         st.switch_page(opt["go"])
     ss.intro_node = opt["next"]
     st.rerun()
+
+
+

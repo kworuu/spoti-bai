@@ -347,7 +347,7 @@ def _show_bot_message(text: str, typing_step: int | None = None) -> None:
 
 def _show_message(m: dict) -> None:
     if m["role"] == "bot":
-        _show_bot_message(m["text"])          # was _bot(...)
+        _show_bot_message(m["text"])
     elif m["role"] == "choice":
         st.markdown(f'<div class="rc-me"><span>{escape(m["labels"][m["picked"]])}</span></div>',
                     unsafe_allow_html=True)
@@ -365,6 +365,7 @@ def _show_message(m: dict) -> None:
     else:
         st.markdown(f'<div class="rc-me"><span>{escape(m["text"])}</span></div>', unsafe_allow_html=True)
 
+
 def _verdict_html(roast: dict, lang: str) -> str:
     aux, persona = roast["aux_cord"], roast["persona"]
     label = "Aux Cord Rating" if lang == "en" else "Aux Cord Rating mo"
@@ -376,6 +377,7 @@ def _verdict_html(roast: dict, lang: str) -> str:
     if persona.get("vibe"):
         lines.append(f"<b>Vibe:</b> {_plain_html(persona['vibe'])}")
     return "<br>".join(lines)
+
 
 def _scroll_to_bottom(step: int) -> None:
     """Keep the log scrolled to the newest message while Streamlit finishes layout/animation.
@@ -420,7 +422,11 @@ def chat_panel() -> None:
     beats = roast["beats"]
 
     st.markdown(CSS, unsafe_allow_html=True)
-    with st.container(key="rc_panel"):
+
+    # Angry mood: only a beat marked "mood": "angry" makes the card flash red.
+    if state.beat < len(beats) and beats[state.beat].get("mood") == "angry":
+    
+      with st.container(key="rc_panel"):
         st.markdown(
             '<div class="rc-head"><h1 class="rc-title">SPOTI<span class="rc-hl">BAI</span></h1></div>',
             unsafe_allow_html=True,
