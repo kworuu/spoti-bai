@@ -86,6 +86,41 @@ def layers(p: ListeningProfile, now: datetime | None = None, n: int = 5) -> dict
 
 
 # ---------------------------------------------------------------------------
+# Wheel / receipt songs: follow the same layers as the roast
+# ---------------------------------------------------------------------------
+def taste_tracks(p: ListeningProfile, n: int = 10) -> list[Track]:
+    """The n songs that best show who they are, so the wheel and receipt match what the roast says.
+
+    One song per CORE artist first, then older favourites and the current PHASE in turns, then
+    PAST, then a 2nd song each, then their most-played songs fill whatever is left."""
+    pool, seen = [], set()           # most played first, then saved songs, then playlist songs
+    for t in (p.top_tracks_now + p.top_tracks_long + [s.track for s in p.saved]
+              + [t for pl in p.playlists for t in pl.tracks]):
+        key = (t.name.lower(), (t.artists[0].lower() if t.artists else ""))
+        if t.uri and key not in seen:
+            seen.add(key)
+            pool.append(t)
+
+    lay = layers(p)
+    year = [a.name for a in p.top_artists_long]
+    mixed = [a for pair in zip(year, lay["phase"]) for a in pair]          # older top, current phase, ...
+    mixed += year[len(lay["phase"]):] + lay["phase"][len(year):]           # whatever is left over
+    artists = list(dict.fromkeys(lay["core"] + mixed + lay["past_artists"]))
+
+    picked, used = [], set()
+    for _ in range(2):                         # round 1: 1 song each, round 2: a 2nd song each
+        for a in artists:
+            if len(picked) >= n:
+                break
+            t = next((t for t in pool if t.uri not in used and a in t.artists), None)
+            if t:
+                picked.append(t)
+                used.add(t.uri)
+    picked += [t for t in pool if t.uri not in used][: n - len(picked)]     # top up
+    return picked[:n]
+
+
+# ---------------------------------------------------------------------------
 # Habits (from song details we already download)
 # ---------------------------------------------------------------------------
 def habits(p: ListeningProfile) -> dict:
