@@ -37,7 +37,7 @@ def _hour_label(h) -> str:
 
 
 def fallback_roast(profile: ListeningProfile, stats: dict, lang: str = "en") -> dict:
-    top = top = (stats.get("current", {}).get("artists") or stats["top"]["artists"])[:1] or ["nobody"]
+    top = (stats.get("layers", {}).get("core") or stats["top"]["artists"])[:1] or ["nobody"]
     dec, hrs, tvn, g = stats["decades"], stats["hours"], stats["then_vs_now"], stats["gauges"]
     name = profile.display_name
     artist = f"**{top[0]}**"

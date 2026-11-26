@@ -16,7 +16,7 @@ import spotipy                                   # noqa: E402
 from spotipy.oauth2 import SpotifyOAuth          # noqa: E402
 
 from BackEnd.config import get_secret            # noqa: E402
-from BackEnd.sources.spotify import fetch_profile  # noqa: E402
+from BackEnd.sources.spotify import SCOPE, fetch_profile  # noqa: E402
 from BackEnd.stats import compute_all            # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "my_profile.json"
@@ -25,7 +25,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     client_id=get_secret("SPOTIFY_CLIENT_ID"),
     client_secret=get_secret("SPOTIFY_CLIENT_SECRET"),
     redirect_uri=get_secret("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8501"),
-    scope="user-top-read user-read-recently-played",
+    scope=SCOPE,
     cache_path=str(ROOT / ".cache-dev"),
 ))
 

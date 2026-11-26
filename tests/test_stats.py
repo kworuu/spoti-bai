@@ -100,10 +100,12 @@ def test_decade_split(make_profile):
     assert stats.decade_split(p) == {"now": 2020, "then": 2000}
 
 
-def test_prompt_puts_current_in_now_and_old_in_past(make_profile):
+def test_prompt_layers_for_a_shifted_listener(make_profile):
     from BackEnd import prompts
     p = make_shifted_listener(make_profile)
     data = prompts.data_block(p, stats.compute_all(p, this_year=2026))
-    assert data["NOW"]["obsession"][0] == "NewJeans"
-    assert data["NOW"]["genres"][0] == "k-pop"
-    assert "rock" in data["PAST"]["genres"]
+    assert data["CORE"]["artists"] == ["Rock 0"]           # in BOTH the month and the year = who they are
+    assert data["PHASE"]["artists"][:2] == ["NewJeans", "IVE"]
+    assert data["PHASE"]["genres"] == ["k-pop"]           # new this month
+    assert "rock" in data["PAST"]["genres"]               # faded
+    assert data["LATELY"]["on_repeat"] == ["Ditto - NewJeans"]

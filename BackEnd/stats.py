@@ -7,6 +7,7 @@ from datetime import date
 from statistics import median
 from zoneinfo import ZoneInfo
 
+from BackEnd.insights import compute_insights
 from BackEnd.models import ListeningProfile
 
 MNL = ZoneInfo("Asia/Manila")
@@ -94,7 +95,8 @@ def genres_split(p: ListeningProfile, n: int = 5) -> dict:
     now, then = weighted(p.top_artists_now), weighted(p.top_artists_long)
     share = lambda g, tag: g[tag] / (sum(g.values()) or 1)
     faded = [tag for tag, _ in then.most_common() if share(then, tag) - share(now, tag) >= FADED_SHARE]
-    return {"now": [tag for tag, _ in now.most_common(n)], "then": faded[:n]}
+    return {"now": [tag for tag, _ in now.most_common(n)], "then": faded[:n],
+            "year": [tag for tag, _ in then.most_common(n * 2)]}
 
 
 def decade_split(p: ListeningProfile) -> dict:
@@ -143,4 +145,4 @@ def compute_all(p: ListeningProfile, this_year: int | None = None) -> dict:
             "gauges": gauges(p, hours, tvn, gen, this_year),
             "current": current_obsession(p), 
             "genres_split": genres_split(p),
-            "decade_split": decade_split(p)}
+            "decade_split": decade_split(p), **compute_insights(p)}

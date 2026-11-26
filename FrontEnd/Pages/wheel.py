@@ -44,7 +44,8 @@ except FileNotFoundError:
     st.error(f"Secrets file not found at expected path: {SECRETS_PATH}")
     st.stop()
 
-SCOPE = "user-top-read user-read-recently-played"
+SCOPE = ("user-top-read user-read-recently-played user-library-read "
+         "playlist-read-private playlist-read-collaborative")
 
 # ---- Settings you can change ------------------------------------------------
 TOP_N = 10                  # songs on the wheel

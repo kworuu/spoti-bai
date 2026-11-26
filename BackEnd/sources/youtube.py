@@ -18,7 +18,7 @@ from urllib.parse import urlencode
 import requests
 
 from BackEnd.config import get_secret
-from BackEnd.models import Artist, ListeningProfile, Play, Track
+from BackEnd.models import Artist, ListeningProfile, Play, Saved, Track
 from BackEnd.sources.spotify import ARTIST_MAX, NAME_MAX
 
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -158,6 +158,7 @@ def fetch_profile(token: str, get=requests.get, now: datetime | None = None) -> 
         top_artists_now=ranked_artists(now_tracks),
         top_artists_long=ranked_artists(long_tracks),
         recent_plays=[Play(t, at) for at, t in likes[:50]],
+        saved=[Saved(t, at) for at, t in likes],
     )
 
 

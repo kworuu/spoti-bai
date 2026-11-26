@@ -21,18 +21,23 @@ REFUSAL = {
 
 BEAT_GUIDE = {
     "greet": "Greet them by display_name and tease that you've seen their library.",
-    "artists": "Roast their CURRENT obsession: NOW.obsession artists, NOW.on_repeat songs and NOW.genres. "
-                "Name at least one real **Artist** from NOW. Do NOT bring up PAST here.",
-    "decade": "Roast their home decade, preferring NOW.decade (overall: decades.home, decades.share). "
-                "If there is no decade, joke that you can't even tell what era they're from.",
-    "hours": "Roast WHEN they listen using hours.peak_hour (0-23, Manila time) and hours.night_owl (%). "
+    "artists": "Roast who they ARE: lead with CORE (their long-standing artists and genres). Then one line on "
+               "their PHASE this month if it differs. Name at least one real **Artist** from CORE. "
+               "HABITS.local_pct (local OPM vs foreign) is fair game here. Do NOT use LATELY or PAST here.",
+    "decade": "Roast their home decade, preferring PHASE.decade (overall: decades.home, decades.share). "
+              "If there is no decade, joke that you can't even tell what era they're from.",
+    "hours": "Roast HOW and WHEN they listen: hours.peak_hour (0-23, Manila time), hours.night_owl (%), "
+             "SESSIONS (longest binge: songs, minutes, day; weekend share), SESSIONS.context (playlists vs "
+             "albums vs random songs), and LATELY.on_repeat as a playful 'this week you've been…' aside. "
              "Never roast how many plays they have: Spotify only shares the last 50. "
              "If source is \"youtube\", these are the hours they LIKE songs, not play them: say it that way. "
              "If total_plays is 0, joke that they barely play anything lately.",
-    "then_now": "The ONLY beat for PAST: roast how their taste changed (PAST.genres, PAST.decade, "
-                "then_vs_now.dropped vs NOW). Frame PAST as history: 'you USED to...'. "
-                "High shift = phase collector; low shift = stuck on repeat.",
-    "persona":  "Describe their aesthetic and emotional vibe in one playful line (roast tone, not therapy).",
+    "then_now": "The ONLY beat for PAST: roast how their taste changed (PAST.genres, PAST.artists, PAST.decade, "
+                "LIBRARY old vs recent saves, then_vs_now.dropped) against CORE and PHASE. Frame PAST as "
+                "history: 'you USED to...'. High shift = phase collector; low shift = stuck on repeat.",
+    "persona": "Describe their aesthetic and emotional vibe in one playful line (roast tone, not therapy). "
+               "Use PLAYLISTS (quote ONE funny playlist name if there is one) and HABITS (sped up / slowed / "
+               "remix tags, explicit_pct, avg_length, singles_pct).",
 }
 
 SYSTEM_ROAST = """You are SpotiBai, a blunt, funny online music critic who roasts people's music taste.
@@ -56,8 +61,11 @@ RULES
    completely", "barely a night owl"). Plain percentages are fine once per beat.
 10. If a value is null or "unknown", don't mention it at all.
 11. Address them by display_name only (it's already a short first name).
-12. NOW is who they are today: lead with it. PAST is what they used to play: only mention it in the
-    "then_now" beat, and always in the past tense. Never present a PAST genre or artist as current.
+12. Taste LAYERS, most stable first: CORE = who they are (lead with this), PHASE = this month,
+    LATELY = the last few days (only a passing joke, never their identity), PAST = what faded
+    (only in the "then_now" beat, always in the past tense). Never present PAST as current, and
+    never present a LATELY song as their whole personality.
+13. Pick the 1-2 funniest facts per beat; you don't have to use every field.
 
 BEATS (write them in this order, one object each):
 {beat_lines}
@@ -84,18 +92,26 @@ def roast_system_prompt(lang: str, canary: str) -> str:
 def data_block(profile: ListeningProfile, stats: dict) -> dict:
     """Compact, cleaned view of the user's data: only what the roast needs."""
     c = lambda xs, n=80: [clean_text(x, n) for x in xs]
-    tvn = stats["then_vs_now"]
+    tvn, L, G = stats["then_vs_now"], stats["layers"], stats["genres_split"]
     return {
         "source": profile.source,
         "display_name": first_name(profile.display_name),
-        # NOW = what they play today (lead with this). PAST = what faded (then_now beat only).
-        "NOW": {"obsession": c(stats["current"]["artists"]),
-                "on_repeat": c(stats["current"]["on_repeat"], 160),
-                "top_tracks": c(stats["top"]["tracks"], 160),
-                "genres": c(stats["genres_split"]["now"], 40) or "unknown",
-                "decade": stats["decade_split"]["now"]},
-        "PAST": {"genres": c(stats["genres_split"]["then"], 40),
+        # Taste layers, most stable first (see rule 12)
+        # core genres: in this month AND the year, and not faded; phase genres: new this month
+        "CORE": {"artists": c(L["core"]),
+                 "genres": c([g for g in G["now"] if g in G["year"] and g not in G["then"]], 40) or "unknown"},
+        "PHASE": {"artists": c(L["phase"]), "top_tracks": c(stats["top"]["tracks"], 160),
+                  "genres": c([g for g in G["now"] if g not in G["year"]], 40),
+                  "decade": stats["decade_split"]["now"]},
+        "LATELY": {"artists": c(L["lately"]), "on_repeat": c(L["on_repeat"], 160)},
+        "PAST": {"genres": c(stats["genres_split"]["then"], 40), "artists": c(L["past_artists"]),
                  "decade": stats["decade_split"]["then"]},
+        "HABITS": _clean_habits(stats["habits"]),
+        "SESSIONS": stats["sessions"],
+        "LIBRARY": {k: (c(v) if k.endswith("_artists") else v) for k, v in stats["library"].items()},
+        "PLAYLISTS": {k: (c(v) if k in ("names", "top_artists_inside") else
+                          {"name": clean_text(v["name"], 80), "songs": v["songs"]} if k == "biggest" else v)
+                      for k, v in stats["playlists"].items()},
         "decades": stats["decades"],
         "hours": {k: stats["hours"][k] for k in ("peak_hour", "night_owl", "total_plays")},
         "then_vs_now": {"new_obsessions": c(tvn["new_obsessions"]), "dropped": c(tvn["dropped"]),
@@ -104,6 +120,15 @@ def data_block(profile: ListeningProfile, stats: dict) -> dict:
         **({"note": "YouTube Music: hours = when they like songs; no genres or release years"}
            if profile.source == "youtube" else {}),
     }
+
+
+def _clean_habits(h: dict) -> dict:
+    """Song names in tag examples are untrusted text: clean them; drop unknown (None) values."""
+    out = {k: v for k, v in h.items() if v not in (None, [], {}) and k != "tags"}
+    if h.get("tags"):
+        out["tags"] = {t: {"pct": v["pct"], "examples": [clean_text(x, 80) for x in v["examples"]]}
+                       for t, v in h["tags"].items()}
+    return out
 
 
 def first_name(display_name: str) -> str:
