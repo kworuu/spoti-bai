@@ -8,7 +8,8 @@ Flow:
     -> verdict message (Aux Cord Rating + persona)
     -> free chat with st.chat_input
 
-Session keys used: roast (dict from BackEnd.roast.make_roast), beat (int), chat (list of messages).
+Session keys used: roast (dict from BackEnd.roast.make_roast), beat (int), chat (list of messages),
+receipt_png (bytes of the top-10 receipt, built once per roast).
 """
 import re
 from html import escape
@@ -114,7 +115,7 @@ CSS = """
 .rc-bot {
   margin: 0;
   max-width: min(92%, 62ch);
-  font-size: max(15px, calc(18 * var(--u))) !important;   /* !important: Streamlit's <p> style overrides it */
+  font-size: max(15px, calc(16 * var(--u))) !important;   /* !important: Streamlit's <p> style overrides it */
   line-height: 1.6 !important;
   color: #2A2A2A;
   white-space: pre-line;
@@ -137,16 +138,51 @@ CSS = """
   line-height: 1.45;
 }
 
-/* ---- verdict box ---- */
-.rc-verdict {
+/* ---- verdict box (a Streamlit container, so the download button can sit inside it) ---- */
+.st-key-rc_verdict {
   margin: 0;
-  padding: calc(14 * var(--u)) calc(18 * var(--u));
+  padding: calc(14 * var(--u)) calc(18 * var(--u)) !important;
   border: 1.5px solid var(--ink);
   background: #FFFFFF;
   box-shadow: calc(4 * var(--u)) calc(4 * var(--u)) 0 var(--hl);
+  gap: calc(12 * var(--u)) !important;
+  flex-shrink: 0 !important;
+  animation: rc-fade-up .45s ease both;
+}
+.st-key-rc_verdict [data-testid="stMarkdownContainer"],
+.st-key-rc_verdict [data-testid="stMarkdown"] {
+  margin-bottom: 0 !important;   /* Streamlit's negative margin otherwise lets the button overlap */
+}
+.st-key-rc_verdict [data-testid="stElementContainer"] {
+  width: auto !important;
+}
+.rc-verdict {
+  margin: 0;
   font-size: max(14px, calc(16 * var(--u)));
   line-height: 1.5;
-  animation: rc-fade-up .45s ease both;
+}
+.st-key-rc_receipt button {
+  border-radius: 0 !important;
+  border: 1px solid var(--ink) !important;
+  background: var(--ink) !important;
+  color: #FFFFFF !important;
+  padding: calc(8 * var(--u)) calc(18 * var(--u)) !important;
+  min-height: 38px;
+  box-shadow: none !important;
+  transition: background-color .2s ease, color .2s ease, transform .18s ease !important;
+}
+.st-key-rc_receipt button p {
+  color: inherit !important;
+  font-size: max(12px, calc(13 * var(--u))) !important;
+  font-weight: 600 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  margin: 0 !important;
+}
+.st-key-rc_receipt button:hover {
+  background: var(--hl) !important;
+  color: var(--ink) !important;
+  transform: translateY(-1px);
 }
 @keyframes rc-fade-up {
   from { opacity: 0; transform: translateY(6px); }
@@ -364,9 +400,43 @@ def _show_message(m: dict) -> None:
                         if p.get("url") else f'<div class="rc-pick">{body}</div>')
         st.markdown(f'<div class="rc-picks">{"".join(rows)}</div>', unsafe_allow_html=True)
     elif m["role"] == "verdict":
-        st.markdown(f'<div class="rc-verdict">{m["html"]}</div>', unsafe_allow_html=True)
+        with st.container(key="rc_verdict"):
+            st.markdown(f'<div class="rc-verdict">{m["html"]}</div>', unsafe_allow_html=True)
+            _receipt_button()
     else:
         st.markdown(f'<div class="rc-me"><span>{escape(m["text"])}</span></div>', unsafe_allow_html=True)
+
+
+def _receipt_button() -> None:
+    """'Download receipt' button: a PNG receipt of the user's top 10 songs (built once per roast)."""
+    state = st.session_state
+    profile = state.get("profile")
+    if profile is None:
+        st.caption("Receipt unavailable: no listening profile in session_state.")
+        print("[receipt] session_state.profile is missing", flush=True)
+        return
+    if not state.get("receipt_png"):
+        try:
+            from FrontEnd.UI.receipt import make_receipt_png
+            state.receipt_png = make_receipt_png(profile)
+        except Exception as error:      # a broken receipt must never break the chat, but say why
+            import traceback
+            traceback.print_exc()
+            st.caption(f"Receipt unavailable: {type(error).__name__}: {error}")
+            return
+    lang = state.roast.get("lang", "en")
+    safe_name = re.sub(r"[^A-Za-z0-9_-]+", "", profile.display_name or "") or "me"
+    options = dict(
+        label="Download my top 10 receipt" if lang == "en" else "I-download akong top 10 resibo",
+        data=state.receipt_png,
+        file_name=f"ReceiptNiBai_{safe_name}.png",
+        mime="image/png",
+        key="rc_receipt",
+    )
+    try:
+        st.download_button(**options, on_click="ignore")   # Streamlit >= 1.43: no rerun on click
+    except TypeError:
+        st.download_button(**options)
 
 
 def _verdict_html(roast: dict, lang: str) -> str:
@@ -415,6 +485,7 @@ def init_chat_state(roast: dict) -> None:
     st.session_state.roast = roast
     st.session_state.beat = 0
     st.session_state.chat = []
+    st.session_state.receipt_png = None   # rebuilt for the new profile on the next verdict
 
 
 ANGRY_CSS = """
