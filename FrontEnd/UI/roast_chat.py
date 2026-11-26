@@ -115,7 +115,7 @@ CSS = """
 .rc-bot {
   margin: 0;
   max-width: min(92%, 62ch);
-  font-size: max(15px, calc(16 * var(--u))) !important;   /* !important: Streamlit's <p> style overrides it */
+  font-size: max(15px, calc(18 * var(--u))) !important;   /* !important: Streamlit's <p> style overrides it */
   line-height: 1.6 !important;
   color: #2A2A2A;
   white-space: pre-line;
@@ -145,8 +145,8 @@ CSS = """
   border: 1.5px solid var(--ink);
   background: #FFFFFF;
   box-shadow: calc(4 * var(--u)) calc(4 * var(--u)) 0 var(--hl);
-  gap: calc(12 * var(--u)) !important;
-  flex-shrink: 0 !important;
+  font-size: max(14px, calc(16 * var(--u)));
+  line-height: 1.5;
   animation: rc-fade-up .45s ease both;
 }
 .st-key-rc_verdict [data-testid="stMarkdownContainer"],
@@ -208,10 +208,14 @@ CSS = """
 }
 
 /* ---- reply buttons: appear after typing finishes ---- */
+/* stacked like the intro buttons: one column, all as wide as the widest label, right-aligned */
 [class*="st-key-rc_choices"] {
-  flex-direction: row !important;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-direction: column !important;
+  flex-wrap: nowrap;
+  align-items: stretch !important;
+  width: fit-content !important;
+  max-width: 100%;
+  margin-left: auto !important;
   gap: calc(8 * var(--u)) !important;
   animation: rc-reveal .4s ease var(--wait, 0s) both;
 }
@@ -220,8 +224,10 @@ CSS = """
   1% { visibility: visible; pointer-events: none; }
   100% { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
 }
-[class*="st-key-rc_choices"] [data-testid="stElementContainer"] {
-  width: auto !important;
+[class*="st-key-rc_choices"] [data-testid="stElementContainer"],
+[class*="st-key-rc_choices"] [data-testid="stElementContainer"] > *,
+[class*="st-key-rc_choices"] button {
+  width: 100% !important;
 }
 [class*="st-key-rc_choices"] button {
   border-radius: 0 !important;
@@ -230,6 +236,7 @@ CSS = """
   color: var(--ink) !important;
   padding: calc(10 * var(--u)) calc(22 * var(--u)) !important;
   min-height: 42px;
+  min-width: max(190px, calc(230 * var(--u)));
   box-shadow: none !important;
   transition: background-color .2s ease, color .2s ease, transform .18s ease !important;
 }
@@ -486,6 +493,20 @@ def init_chat_state(roast: dict) -> None:
     st.session_state.beat = 0
     st.session_state.chat = []
     st.session_state.receipt_png = None   # rebuilt for the new profile on the next verdict
+
+
+ANGRY_CSS = """
+<style>
+.stApp .st-key-rc_panel { animation: rc-angry .2s linear infinite !important; }
+@keyframes rc-angry {
+  0%, 50%, 100% { box-shadow: calc(8 * var(--u)) calc(8 * var(--u)) 0 var(--ink); }
+  5%, 45%       { box-shadow: calc(8 * var(--u)) calc(8 * var(--u)) 0 #FF3B30, 0 0 0 4px #FF3B30; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stApp .st-key-rc_panel { animation: none !important; box-shadow: 0 0 0 4px #FF3B30 !important; }
+}
+</style>
+"""
 
 
 ANGRY_CSS = """
