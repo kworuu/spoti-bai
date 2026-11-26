@@ -311,16 +311,23 @@ div[data-testid="stButton"] button:hover {
     }
 
     .hero-container {
-        padding-top: 2rem;
-        padding-left: 0;
+        padding-top: 6rem;
+        padding-left: 1.5rem;
+        overflow: hidden;
+        container-type: inline-size;
     }
 
     .hero-title {
-        font-size: 1.7rem;
-        white-space: normal;
-        clip-path: none;
+        display: inline-block;
+        font-family: Georgia, serif;
+        font-size: clamp(2rem, 11cqi, 4.5rem);
+        line-height: 1.25;
+        color: #1A1A1A;
+        margin-bottom: 2rem;
 
-        animation: fadeIn 1.5s ease 0.6s both;
+        white-space: nowrap;
+        clip-path: inset(0 100% 0 0);
+        animation: typing 1.5s steps(27, end) 0.2s forwards;
     }
 
     .album-grid {
@@ -370,7 +377,7 @@ with left_hero:
         'Your playlist our judgment.'
         '</div>'
         '<div class="hero-title">'
-        'IS YOUR MUSIC </br>TASTE '
+        'IS YOUR MUSIC <br>TASTE '
         '<span class="highlight">GARBAGE?</span>'
         '</div>'
         '</div>'
