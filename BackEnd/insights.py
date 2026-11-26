@@ -171,7 +171,7 @@ def playlists(p: ListeningProfile) -> dict:
     biggest = max(own or p.playlists, key=lambda pl: pl.total)
     inside = _artists_of(t for pl in p.playlists for t in pl.tracks)
     return {
-        "count": len(p.playlists),
+                "count": len(p.playlists) if len(p.playlists) < 50 else "50+",
         "own": len(own),
         "followed": len(p.playlists) - len(own),
         "collaborative": sum(1 for pl in p.playlists if pl.collaborative),
