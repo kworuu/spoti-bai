@@ -88,7 +88,7 @@ def test_injection_title_stays_in_data(make_profile):
     assert evil not in system                        # never in the instructions
     assert evil in user and "<<DATA>>" in user       # only inside the labelled data block
     data = json.loads(user.split("<<DATA>>")[1].split("<</DATA>>")[0])
-    assert data["top_tracks"][0].startswith(evil)
+    assert data["NOW"]["top_tracks"][0].startswith(evil)
 
 
 def test_system_prompt_has_language_and_rules():
@@ -131,5 +131,5 @@ def test_prompt_data_hides_unknowns_and_full_name(make_profile):
     p.display_name = "Charles Benedict Daragosa"
     data = prompts.data_block(p, compute_all(p))
     assert data["display_name"] == "Charles"
-    assert data["genres"] == "unknown"
+    assert data["NOW"]["genres"] == "unknown"
     assert "Genre Range" not in data["gauges"]

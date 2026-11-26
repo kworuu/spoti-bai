@@ -63,3 +63,47 @@ def test_empty_profile_never_crashes(make_profile):
     assert s["gauges"]["Genre Range"] is None        # no genres = unknown, not zero
     assert all(v == 0 for k, v in s["gauges"].items() if k != "Genre Range")
     assert s["top"] == {"artists": [], "tracks": []}
+
+
+
+# ---------- "current obsession": used to love one genre, now into another ----------
+def make_shifted_listener(make_profile):
+    """All year: 10 rock artists. Last 4 weeks: K-pop. Last 50 plays: one K-pop song 6x, one rock song 2x."""
+    from BackEnd.models import Artist, Play
+    rock = [Artist(f"Rock {i}", ["rock", "alt rock"]) for i in range(10)]
+    kpop = [Artist("NewJeans", ["k-pop"]), Artist("IVE", ["k-pop"]), Artist("Rock 0", ["rock", "alt rock"])]
+    plays = ([Play(track("Ditto", "NewJeans", 2022), play_at_manila_hour(21).at) for _ in range(6)]
+             + [Play(track("Rock song", "Rock 3", 2005), play_at_manila_hour(9).at) for _ in range(2)])
+    return make_profile(top_artists_now=kpop, top_artists_long=rock,
+                        top_tracks_now=[track("Ditto", "NewJeans", 2022)],
+                        top_tracks_long=[track(f"r{i}", f"Rock {i}", 2005, i) for i in range(10)],
+                        recent_plays=plays)
+
+
+def test_current_obsession_beats_old_favourites(make_profile):
+    p = make_shifted_listener(make_profile)
+    cur = stats.current_obsession(p)
+    assert cur["artists"][0] == "NewJeans"                 # #1 now AND 6 recent plays
+    assert "Ditto - NewJeans" in cur["on_repeat"]          # 6 plays in the last 50 = on repeat
+    assert "Rock song - Rock 3" not in cur["on_repeat"]    # only 2 plays
+
+
+def test_genres_split_keeps_old_genre_out_of_now(make_profile):
+    p = make_shifted_listener(make_profile)
+    g = stats.genres_split(p)
+    assert g["now"][0] == "k-pop"                          # combined counting would put rock first
+    assert "rock" in g["then"] and "k-pop" not in g["then"]
+
+
+def test_decade_split(make_profile):
+    p = make_shifted_listener(make_profile)
+    assert stats.decade_split(p) == {"now": 2020, "then": 2000}
+
+
+def test_prompt_puts_current_in_now_and_old_in_past(make_profile):
+    from BackEnd import prompts
+    p = make_shifted_listener(make_profile)
+    data = prompts.data_block(p, stats.compute_all(p, this_year=2026))
+    assert data["NOW"]["obsession"][0] == "NewJeans"
+    assert data["NOW"]["genres"][0] == "k-pop"
+    assert "rock" in data["PAST"]["genres"]

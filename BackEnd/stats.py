@@ -12,6 +12,7 @@ from BackEnd.models import ListeningProfile
 MNL = ZoneInfo("Asia/Manila")
 NIGHT_HOURS = {22, 23, 0, 1, 2, 3}      # 10 pm – 3:59 am
 GENRE_RANGE_FULL = 25                    # this many distinct genres = Genre Range 100
+FADED_SHARE = 0.15
 OLD_SONG_YEARS = 10                      # "Time Travel" counts songs at least this old
 
 
@@ -58,6 +59,52 @@ def genres(p: ListeningProfile) -> dict:
     return {"top": [name for name, _ in g.most_common(5)], "distinct": len(g)}
 
 
+def _rank_points(names: list[str], top: int = 20) -> Counter:
+    """Rank 1 gets `top` points, rank 2 gets top-1, ... (Spotify's lists are already ranked)."""
+    return Counter({name: max(1, top - i) for i, name in enumerate(names)})
+
+
+def current_obsession(p: ListeningProfile, n: int = 5) -> dict:
+    """What they're into RIGHT NOW, strongest signal first.
+
+    Score per artist = 2 x plays in the last 50 plays (real repeats, the freshest data Spotify gives)
+                     + rank points in the ~4-week top artists (20 for #1 ... 1 for #20).
+    "on_repeat" = songs played 3+ times in the last 50 plays.
+    """
+    plays = Counter(pl.track.artists[0] for pl in p.recent_plays if pl.track.artists)
+    score = Counter({a: 2 * c for a, c in plays.items()})
+    score.update(_rank_points([a.name for a in p.top_artists_now]))
+    track_plays = Counter((pl.track.name, ", ".join(pl.track.artists[:2])) for pl in p.recent_plays)
+    on_repeat = [f"{name} - {artist}" for (name, artist), c in track_plays.most_common(5) if c >= 3]
+    return {"artists": [a for a, _ in score.most_common(n)], "on_repeat": on_repeat}
+
+
+def genres_split(p: ListeningProfile, n: int = 5) -> dict:
+    """Genres weighted by rank, kept apart: 'now' (~4 weeks) vs 'then' (~1 year).
+
+    'then' = genres that FADED: their share of the year is clearly bigger than their share of this month.
+    (A genre they still play a bit now can still count as faded if it used to dominate.)
+    """
+    def weighted(artists):
+        g = Counter()
+        for i, a in enumerate(artists):
+            for tag in a.genres:
+                g[tag] += max(1, 20 - i)
+        return g
+    now, then = weighted(p.top_artists_now), weighted(p.top_artists_long)
+    share = lambda g, tag: g[tag] / (sum(g.values()) or 1)
+    faded = [tag for tag, _ in then.most_common() if share(then, tag) - share(now, tag) >= FADED_SHARE]
+    return {"now": [tag for tag, _ in now.most_common(n)], "then": faded[:n]}
+
+
+def decade_split(p: ListeningProfile) -> dict:
+    """Home decade of the ~4-week top tracks vs the ~1-year ones."""
+    def home(tracks):
+        years = [t.year for t in tracks if t.year]
+        return Counter(y // 10 * 10 for y in years).most_common(1)[0][0] if years else None
+    return {"now": home(p.top_tracks_now), "then": home(p.top_tracks_long)}
+
+
 def top_names(p: ListeningProfile, n: int = 5) -> dict:
     tracks = p.top_tracks_now or p.top_tracks_long
     artists = p.top_artists_now or p.top_artists_long
@@ -88,5 +135,12 @@ def gauges(p: ListeningProfile, hours: dict, tvn: dict, gen: dict,
 
 def compute_all(p: ListeningProfile, this_year: int | None = None) -> dict:
     hours, tvn, dec, gen = active_hours(p), then_vs_now(p), decades(p), genres(p)
-    return {"hours": hours, "then_vs_now": tvn, "decades": dec, "genres": gen,
-            "top": top_names(p), "gauges": gauges(p, hours, tvn, gen, this_year)}
+    return {"hours": hours, 
+            "then_vs_now": tvn, 
+            "decades": dec, 
+            "genres": gen, 
+            "top": top_names(p), 
+            "gauges": gauges(p, hours, tvn, gen, this_year),
+            "current": current_obsession(p), 
+            "genres_split": genres_split(p),
+            "decade_split": decade_split(p)}
