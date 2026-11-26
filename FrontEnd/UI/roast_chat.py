@@ -425,8 +425,9 @@ def chat_panel() -> None:
 
     # Angry mood: only a beat marked "mood": "angry" makes the card flash red.
     if state.beat < len(beats) and beats[state.beat].get("mood") == "angry":
-    
-      with st.container(key="rc_panel"):
+        st.markdown(ANGRY_CSS, unsafe_allow_html=True)
+
+    with st.container(key="rc_panel"):
         st.markdown(
             '<div class="rc-head"><h1 class="rc-title">SPOTI<span class="rc-hl">BAI</span></h1></div>',
             unsafe_allow_html=True,
