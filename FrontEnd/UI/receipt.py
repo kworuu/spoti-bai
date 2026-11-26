@@ -66,17 +66,10 @@ def _ms(track) -> int | None:
 
 
 def top_songs(profile) -> list:
-    """Most played first: last ~4 weeks, topped up from the ~1 year list if that's short."""
-    songs, seen = [], set()
-    for track in list(getattr(profile, "top_tracks_now", []) or []) + list(getattr(profile, "top_tracks_long", []) or []):
-        artists = getattr(track, "artists", None) or []
-        key = (str(track.name).lower(), tuple(str(a).lower() for a in artists[:1]))
-        if key not in seen:
-            seen.add(key)
-            songs.append(track)
-        if len(songs) == TOP_N:
-            break
-    return songs
+    """The 10 songs that best show their taste: the same CORE / PHASE / PAST layers the roast uses
+    (BackEnd/insights.taste_tracks), so the wheel, the receipt and the roast all agree."""
+    from BackEnd.insights import taste_tracks
+    return taste_tracks(profile, TOP_N)
 
 
 def wheel_songs(profile) -> list[dict]:

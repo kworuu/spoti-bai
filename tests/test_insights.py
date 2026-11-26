@@ -169,3 +169,17 @@ def test_old_saved_fixture_still_loads():
            "recent_plays": [{"track": {"name": "a", "artists": ["b"]}, "at": "2026-11-20T15:30:00+00:00"}]}
     p = ListeningProfile.from_dict(old)
     assert p.top_tracks_now[0].explicit is None and p.recent_plays[0].context == "" and p.saved == []
+
+
+def test_taste_tracks_follow_the_roast_not_just_recent_plays():
+    from BackEnd.insights import taste_tracks
+    from BackEnd.models import Artist, ListeningProfile, Track
+    song = lambda n, a: Track(name=n, artists=[a], album="", year=None, uri=f"spotify:track:{n}", image="")
+    p = ListeningProfile(source="spotify", display_name="x",
+                         top_artists_now=[Artist("Slowdive"), Artist("Brainrot")],
+                         top_artists_long=[Artist("my bloody valentine"), Artist("Slowdive")],
+                         top_tracks_now=[song(f"rot{i}", "Brainrot") for i in range(8)] + [song("sd1", "Slowdive")],
+                         top_tracks_long=[song("sd2", "Slowdive"), song("mbv1", "my bloody valentine")])
+    names = [t.name for t in taste_tracks(p, 4)]
+    assert names[0] == "sd1" and "mbv1" in names      # CORE first, older favourite not crowded out
+    assert len(taste_tracks(p, 10)) == 10              # topped up from the rest
