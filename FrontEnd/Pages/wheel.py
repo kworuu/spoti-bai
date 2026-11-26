@@ -22,8 +22,6 @@ Open: http://127.0.0.1:8501   (use 127.0.0.1, not localhost — must match the r
 
 import json
 import random
-from pathlib import Path
-import tomllib
 
 import requests
 import spotipy
@@ -32,20 +30,19 @@ import streamlit.components.v1 as components
 from spotipy.cache_handler import CacheHandler
 from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 
+from BackEnd.config import get_secret
+from BackEnd.sources.spotify import SCOPE
+
 # Must be the first Streamlit call.
 st.set_page_config(page_title="SPOTIBAI", page_icon="🎡", layout="wide")
 
-# ---- Load secrets manually from .streamlit/secrets.toml (project root) ----
-SECRETS_PATH = Path(__file__).resolve().parents[2] / ".streamlit" / "secrets.toml"
-try:
-    with open(SECRETS_PATH, "rb") as f:
-        secrets = tomllib.load(f)
-except FileNotFoundError:
-    st.error(f"Secrets file not found at expected path: {SECRETS_PATH}")
+# ---- Secrets: st.secrets on Streamlit Cloud, .streamlit/secrets.toml locally ----
+SPOTIFY_CLIENT_ID = get_secret("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = get_secret("SPOTIFY_CLIENT_SECRET")
+SPOTIFY_REDIRECT_URI = get_secret("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8501/wheel")
+if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
+    st.error("Spotify isn't set up: add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to the app's secrets.")
     st.stop()
-
-SCOPE = ("user-top-read user-read-recently-played user-library-read "
-         "playlist-read-private playlist-read-collaborative")
 
 # ---- Settings you can change ------------------------------------------------
 TOP_N = 10                  # songs on the wheel
@@ -68,9 +65,9 @@ class SessionCacheHandler(CacheHandler):
 
 
 auth = SpotifyOAuth(
-    client_id=secrets["SPOTIFY_CLIENT_ID"],
-    client_secret=secrets["SPOTIFY_CLIENT_SECRET"],
-    redirect_uri=secrets.get("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8501"),
+    client_id=SPOTIFY_CLIENT_ID,
+    client_secret=SPOTIFY_CLIENT_SECRET,
+    redirect_uri=SPOTIFY_REDIRECT_URI,
     scope=SCOPE,
     cache_handler=SessionCacheHandler(),
     open_browser=False,
@@ -115,7 +112,7 @@ if SOURCE == "spotify" and not auth.validate_token(auth.cache_handler.get_cached
         f"""
         <script>
           const redirectScript = window.parent.document.createElement("script");
-          redirectScript.textContent = "window.location.href = " + JSON.stringify({json.dumps(spotify_login_url)}) + ";";
+          redirectScript.textContent = "window.top.location.href = " + JSON.stringify({json.dumps(spotify_login_url)}) + ";";
           window.parent.document.head.appendChild(redirectScript);
         </script>
         """,
@@ -127,7 +124,7 @@ if SOURCE == "spotify" and not auth.validate_token(auth.cache_handler.get_cached
 sp = spotipy.Spotify(
     # YouTube users have no Spotify login: an app-only client is enough to check song picks (P7)
     auth_manager=auth if SOURCE == "spotify" else SpotifyClientCredentials(
-        client_id=secrets["SPOTIFY_CLIENT_ID"], client_secret=secrets["SPOTIFY_CLIENT_SECRET"]),
+        client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET),
     requests_timeout=20,   # wait up to 20 s instead of 5
     retries=3,             # try again automatically
 )
