@@ -17,7 +17,6 @@ Backend hook (left open on purpose):
 - getBotReply(text, history)   → SPOTIBAI's answer to the user (JavaScript, in the HTML)
 
 Run:  streamlit run wheel.py
-Open: http://127.0.0.1:8501   (use 127.0.0.1, not localhost — must match the redirect URI)
 """
 
 import json
