@@ -198,17 +198,24 @@ def load_wheel_songs():
     return songs
 
 
+from FrontEnd.UI.loader import LoadingScreen          # noqa: E402
+
+lang = st.session_state.get("lang", "en")              # set by the intro's language step
+loader = LoadingScreen(lang)                           # full-screen loader for the fetches below
+
 if "wheel" not in st.session_state:
     try:
-        with st.spinner("Getting your top songs from Spotify…"):
-            st.session_state.wheel = load_wheel_songs()
+        loader.show(0)
+        st.session_state.wheel = load_wheel_songs()
     except (spotipy.SpotifyException, requests.exceptions.RequestException) as e:
+        loader.hide()
         st.error(f"Couldn't get your songs from Spotify: {e}")
         st.button("Retry")
         st.stop()
 
 wheel = st.session_state.wheel
 if not wheel:
+    loader.hide()
     st.warning("Your Spotify account doesn't have listening history yet. "
                "Play a few songs on Spotify, then refresh this page.")
     st.stop()
@@ -224,20 +231,21 @@ from FrontEnd.UI.roast_chat import chat_panel, init_chat_state  # noqa: E402
 
 if "profile" not in st.session_state:
     try:
-        with st.spinner("Digging through your library…"):
-            st.session_state.profile = fetch_profile(sp)
-            st.session_state.stats = compute_all(st.session_state.profile)
+        loader.show(1)
+        st.session_state.profile = fetch_profile(sp)
+        st.session_state.stats = compute_all(st.session_state.profile)
     except (spotipy.SpotifyException, requests.exceptions.RequestException) as e:
+        loader.hide()
         st.error(f"Couldn't read your listening history from Spotify: {e}")
         st.button("Retry")
         st.stop()
 
 st.session_state.sp = sp    # the chat uses it to check song picks exist on Spotify
-lang = st.session_state.get("lang", "en")              # set by the intro's language step
 if st.session_state.get("roast", {}).get("lang") != lang:
-    with st.spinner("Judging your music taste…" if lang == "en" else "Gi-judge imong music taste…"):
-        # 1 AI call (1 AK). Never raises: falls back to template lines if the AI fails.
-        init_chat_state(make_roast(st.session_state.profile, st.session_state.stats, lang))
+    loader.show(2)
+    # 1 AI call (1 AK). Never raises: falls back to template lines if the AI fails.
+    init_chat_state(make_roast(st.session_state.profile, st.session_state.stats, lang))
+loader.hide()                                          # data is ready: reveal the wheel
 
 
 # ---------------------------------------------------------------------------

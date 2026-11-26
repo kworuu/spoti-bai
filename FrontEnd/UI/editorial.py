@@ -42,7 +42,7 @@ SHOW_STEP_EYEBROW = False   # "Initializing judgment // Step 01" above the title
 SHOW_CHOICE_LABEL = False   # "Choose a response:" above the buttons (roast_chat has none)
 # --------------------------------------------------------------------------------------------------
 
-ED_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');"
+ED_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Inter:wght@400;500;600;700&display=swap');"
 
 ED_CSS = """
 :root{--ink:#1A1A1A;--hl:#FCE38A;--mute:#9E9E9E}
@@ -75,13 +75,14 @@ header[data-testid="stHeader"]{background:transparent!important}
 .ed-head,.ed-head *{text-align:center;border:none!important;box-shadow:none!important;
   margin-bottom:calc(18 * var(--u))!important}
 .ed-head .ed-eyebrow{font-size:.6875rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mute)}
-.ed-title{margin:0;font-family:Georgia,'Times New Roman',serif!important;font-weight:400;
-  font-size:max(24px,calc(38 * var(--u)));letter-spacing:.06em;line-height:1.12;text-transform:uppercase}
-.ed-hl{background:linear-gradient(180deg,transparent 62%,var(--hl) 62%);padding:0 4px}
+/* !important everywhere: Streamlit's own h1 style otherwise wins (bold, wrong size) */
+.ed-title{margin:0!important;padding:0!important;font-family:'Bricolage Grotesque',sans-serif!important;font-weight:800!important;
+  font-size:max(28px,calc(40 * var(--u)))!important;letter-spacing:-.01em!important;line-height:1.1!important;text-transform:uppercase}
+.ed-hl{background:linear-gradient(180deg,transparent 60%,var(--hl) 60%);padding:0 2px;font:inherit!important}
 
 /* ---- bot text: same as .rc-bot (bottom margin makes text -> buttons = roast's 35u message gap) ---- */
-.st-key-ed_card .sb-bot{margin:0 0 calc(19 * var(--u));max-width:92%;font-size:max(16px,calc(22 * var(--u)));
-  line-height:1.6;color:#222222;white-space:pre-line}
+.st-key-ed_card .sb-bot{margin:0 0 calc(19 * var(--u));max-width:min(92%,62ch);font-size:max(14px,calc(16 * var(--u)));
+  line-height:1.6;color:#2A2A2A;white-space:pre-line}
 .st-key-ed_card .sb-bot b{color:var(--ink);font-weight:600}
 .ed-label{display:block;width:100%;font-size:.6875rem;letter-spacing:.15em;text-transform:uppercase;color:#6B6B6B;
   text-align:right;line-height:1.4;margin:0}
@@ -90,15 +91,21 @@ header[data-testid="stHeader"]{background:transparent!important}
 .st-key-ed_card [class*="st-key-sb_choices"]{flex-direction:column!important;flex-wrap:nowrap;justify-content:flex-start;align-items:flex-end;
   gap:calc(8 * var(--u))!important}
 .st-key-ed_card [class*="st-key-sb_choices"] [data-testid="stElementContainer"]{width:auto!important}
+/* stacked buttons share one width (the widest label), right-aligned in the card */
+.st-key-ed_card [class*="st-key-sb_choices"]{width:fit-content!important;max-width:100%;margin-left:auto!important;align-items:stretch!important}
+.st-key-ed_card [class*="st-key-sb_choices"] [data-testid="stElementContainer"],
+.st-key-ed_card [class*="st-key-sb_choices"] [data-testid="stElementContainer"] > *,
+.st-key-ed_card [class*="st-key-sb_choices"] button{width:100%!important}
 .st-key-ed_card [class*="st-key-sb_choices"] [data-testid="stElementContainer"]:has(.ed-label){width:100%!important}
 /* ONE rule set drives every state through variables (beats the theme's rounded pills) */
 .stApp .st-key-ed_card [data-testid^="stBase"]{
   --ed-bg:#fff;--ed-fg:#1A1A1A;--ed-bd:#1A1A1A;
   background:var(--ed-bg)!important;color:var(--ed-fg)!important;border:1px solid var(--ed-bd)!important;
-  border-radius:0!important;padding:calc(7 * var(--u)) calc(16 * var(--u))!important;min-height:38px;box-shadow:none!important;
+  border-radius:0!important;padding:calc(10 * var(--u)) calc(22 * var(--u))!important;min-height:42px;
+  min-width:max(190px,calc(230 * var(--u)));box-shadow:none!important;
   transition:background-color .2s ease,color .2s ease,border-color .2s ease,transform .18s ease!important}
 .stApp .st-key-ed_card [data-testid^="stBase"] p{color:var(--ed-fg)!important;margin:0!important;
-  font-size:max(11px,calc(12 * var(--u)))!important;font-weight:500!important;letter-spacing:.12em!important;
+  font-size:max(12px,calc(13 * var(--u)))!important;font-weight:600!important;letter-spacing:.08em!important;
   text-transform:uppercase!important;line-height:1.35!important}
 /* primary: solid ink, turns yellow on hover (roast_chat's first button) */
 .stApp .st-key-ed_card [data-testid="stBaseButton-primary"]{--ed-bg:#1A1A1A;--ed-fg:#fff}
@@ -115,7 +122,7 @@ header[data-testid="stHeader"]{background:transparent!important}
 .st-key-ed_card .sb-hist{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:0;margin:0 0 calc(19 * var(--u))}
 .st-key-ed_card .sb-pill{display:none}
 .st-key-ed_card .sb-pill.chosen{display:inline-block;max-width:82%;padding:calc(9 * var(--u)) calc(16 * var(--u));
-  border:0;border-radius:0;background:var(--ink);color:#fff;font-size:max(13px,calc(16 * var(--u)));font-weight:400;
+  border:0;border-radius:0;background:var(--ink);color:#fff;font-size:max(13px,calc(14 * var(--u)));font-weight:400;
   letter-spacing:normal;text-transform:none;line-height:1.4}
 
 /* ---- chat input (if one is placed inside the card): rounded, ink outline ---- */
@@ -296,10 +303,12 @@ def pushy_css(step: int, yes_index: int, no_index: int, no_clicks: int) -> str:
     yes = f'.stApp .st-key-ed_card [class*="st-key-c{step}_{yes_index}"] [data-testid^="stBase"]'
     no = f'.stApp .st-key-ed_card [class*="st-key-c{step}_{no_index}"]'
     # padding/font grow (not transform) so the big button pushes the others away instead of overlapping them
-    css = (f"{yes}{{padding:calc(7px * {grow:.2f}) calc(16px * {grow:.2f})!important;"
-           f"min-height:calc(38px * {grow:.2f})!important}}"
-           f"{yes} p{{font-size:calc(12px * {grow:.2f})!important}}"
-           f"{no}{{opacity:{shrink:.2f};transform:scale({shrink:.2f});transform-origin:right center}}")
+    css = (f"{yes}{{padding:calc(10px * {grow:.2f}) calc(22px * {grow:.2f})!important;"
+           f"min-height:calc(42px * {grow:.2f})!important}}"
+           f"{yes} p{{font-size:calc(13px * {grow:.2f})!important}}"
+           f"{no}{{opacity:{shrink:.2f};transform:scale({shrink:.2f});transform-origin:right center}}"
+           # the no button keeps its own size instead of stretching to the growing yes button
+           f"{no},{no} > *,{no} button{{width:auto!important;align-self:flex-end}}")
     if shrink <= 0:
         css += f"{no}{{display:none!important}}"
     # shake the yes button's wrapper (not the button itself, whose transform is used by the hover lift)
