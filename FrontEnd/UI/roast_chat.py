@@ -8,7 +8,8 @@ Flow:
     -> verdict message (Aux Cord Rating + persona)
     -> free chat with st.chat_input
 
-Session keys used: roast (dict from BackEnd.roast.make_roast), beat (int), chat (list of messages).
+Session keys used: roast (dict from BackEnd.roast.make_roast), beat (int), chat (list of messages),
+receipt_png (bytes of the top-10 receipt, built once per roast).
 """
 import re
 from html import escape
@@ -20,7 +21,7 @@ CHAR_SECONDS = 0.016  # typing speed (seconds per character)
 # Card position/size keeps the wheel-page layout (1 unit = 100vh / 800; left 600, right 100, top/bottom 70).
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Inter:wght@400;500;600;700&display=swap');
 
 .stApp .st-key-rc_panel {
   --u: calc(100vh / 800);
@@ -68,18 +69,20 @@ CSS = """
   box-shadow: none !important;
   margin-bottom: calc(18 * var(--u)) !important;
 }
-.rc-title {
-  margin: 0;
-  font-family: Georgia, 'Times New Roman', serif !important;
-  font-weight: 400;
-  font-size: max(24px, calc(38 * var(--u)));
-  letter-spacing: .06em;
-  line-height: 1.12;
+.rc-title {   /* !important: Streamlit's own h1 style otherwise wins */
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: 'Bricolage Grotesque', sans-serif !important;
+  font-weight: 800 !important;
+  font-size: max(28px, calc(40 * var(--u))) !important;
+  letter-spacing: -.01em !important;
+  line-height: 1.1 !important;
   text-transform: uppercase;
 }
 .rc-hl {
-  background: linear-gradient(180deg, transparent 62%, var(--hl) 62%);
-  padding: 0 4px;
+  background: linear-gradient(180deg, transparent 60%, var(--hl) 60%);
+  padding: 0 2px;
+  font: inherit !important;
 }
 
 /* ---- scrollable message log ---- */
@@ -108,12 +111,13 @@ CSS = """
 }
 
 /* ---- bot and user messages ---- */
+.stApp .st-key-rc_panel .rc-bot,
 .rc-bot {
   margin: 0;
-  max-width: 92%;
-  font-size: max(16px, calc(22 * var(--u)));
-  line-height: 1.6;
-  color: #222222;
+  max-width: min(92%, 62ch);
+  font-size: max(15px, calc(16 * var(--u))) !important;   /* !important: Streamlit's <p> style overrides it */
+  line-height: 1.6 !important;
+  color: #2A2A2A;
   white-space: pre-line;
 }
 .rc-bot b {
@@ -130,29 +134,64 @@ CSS = """
   padding: calc(9 * var(--u)) calc(16 * var(--u));
   background: var(--ink);
   color: #FFFFFF;
-  font-size: max(13px, calc(16 * var(--u)));
-  line-height: 1.4;
+  font-size: max(14px, calc(16 * var(--u)));
+  line-height: 1.45;
 }
 
-/* ---- verdict box ---- */
-.rc-verdict {
+/* ---- verdict box (a Streamlit container, so the download button can sit inside it) ---- */
+.st-key-rc_verdict {
   margin: 0;
-  padding: calc(14 * var(--u)) calc(18 * var(--u));
+  padding: calc(14 * var(--u)) calc(18 * var(--u)) !important;
   border: 1.5px solid var(--ink);
   background: #FFFFFF;
   box-shadow: calc(4 * var(--u)) calc(4 * var(--u)) 0 var(--hl);
-  font-size: max(13px, calc(17 * var(--u)));
-  line-height: 1.5;
+  gap: calc(12 * var(--u)) !important;
+  flex-shrink: 0 !important;
   animation: rc-fade-up .45s ease both;
+}
+.st-key-rc_verdict [data-testid="stMarkdownContainer"],
+.st-key-rc_verdict [data-testid="stMarkdown"] {
+  margin-bottom: 0 !important;   /* Streamlit's negative margin otherwise lets the button overlap */
+}
+.st-key-rc_verdict [data-testid="stElementContainer"] {
+  width: auto !important;
+}
+.rc-verdict {
+  margin: 0;
+  font-size: max(14px, calc(16 * var(--u)));
+  line-height: 1.5;
+}
+.st-key-rc_receipt button {
+  border-radius: 0 !important;
+  border: 1px solid var(--ink) !important;
+  background: var(--ink) !important;
+  color: #FFFFFF !important;
+  padding: calc(8 * var(--u)) calc(18 * var(--u)) !important;
+  min-height: 38px;
+  box-shadow: none !important;
+  transition: background-color .2s ease, color .2s ease, transform .18s ease !important;
+}
+.st-key-rc_receipt button p {
+  color: inherit !important;
+  font-size: max(12px, calc(13 * var(--u))) !important;
+  font-weight: 600 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  margin: 0 !important;
+}
+.st-key-rc_receipt button:hover {
+  background: var(--hl) !important;
+  color: var(--ink) !important;
+  transform: translateY(-1px);
 }
 @keyframes rc-fade-up {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 .rc-verdict b.big {
-  font-family: Georgia, 'Times New Roman', serif !important;
+  font-family: 'Bricolage Grotesque', sans-serif !important;
   font-size: max(20px, calc(30 * var(--u)));
-  font-weight: 400;
+  font-weight: 800;
   background: linear-gradient(180deg, transparent 58%, var(--hl) 58%);
   padding: 0 4px;
 }
@@ -189,16 +228,16 @@ CSS = """
   border: 1px solid var(--ink) !important;
   background: #FFFFFF !important;
   color: var(--ink) !important;
-  padding: calc(7 * var(--u)) calc(16 * var(--u)) !important;
-  min-height: 38px;
+  padding: calc(10 * var(--u)) calc(22 * var(--u)) !important;
+  min-height: 42px;
   box-shadow: none !important;
   transition: background-color .2s ease, color .2s ease, transform .18s ease !important;
 }
 [class*="st-key-rc_choices"] button p {
   color: inherit !important;
-  font-size: max(11px, calc(12 * var(--u))) !important;
-  font-weight: 500 !important;
-  letter-spacing: .12em !important;
+  font-size: max(12px, calc(13 * var(--u))) !important;
+  font-weight: 600 !important;
+  letter-spacing: .08em !important;
   text-transform: uppercase !important;
   line-height: 1.35 !important;
   margin: 0 !important;
@@ -232,7 +271,7 @@ CSS = """
   color: var(--ink) !important;
   -webkit-text-fill-color: var(--ink);
   caret-color: var(--ink);
-  font-size: max(13px, calc(15 * var(--u)));
+  font-size: max(14px, calc(16 * var(--u)));
 }
 .stApp .st-key-rc_panel [data-testid="stChatInput"] textarea::placeholder {
   color: #8A8A8A;
@@ -361,9 +400,43 @@ def _show_message(m: dict) -> None:
                         if p.get("url") else f'<div class="rc-pick">{body}</div>')
         st.markdown(f'<div class="rc-picks">{"".join(rows)}</div>', unsafe_allow_html=True)
     elif m["role"] == "verdict":
-        st.markdown(f'<div class="rc-verdict">{m["html"]}</div>', unsafe_allow_html=True)
+        with st.container(key="rc_verdict"):
+            st.markdown(f'<div class="rc-verdict">{m["html"]}</div>', unsafe_allow_html=True)
+            _receipt_button()
     else:
         st.markdown(f'<div class="rc-me"><span>{escape(m["text"])}</span></div>', unsafe_allow_html=True)
+
+
+def _receipt_button() -> None:
+    """'Download receipt' button: a PNG receipt of the user's top 10 songs (built once per roast)."""
+    state = st.session_state
+    profile = state.get("profile")
+    if profile is None:
+        st.caption("Receipt unavailable: no listening profile in session_state.")
+        print("[receipt] session_state.profile is missing", flush=True)
+        return
+    if not state.get("receipt_png"):
+        try:
+            from FrontEnd.UI.receipt import make_receipt_png
+            state.receipt_png = make_receipt_png(profile)
+        except Exception as error:      # a broken receipt must never break the chat, but say why
+            import traceback
+            traceback.print_exc()
+            st.caption(f"Receipt unavailable: {type(error).__name__}: {error}")
+            return
+    lang = state.roast.get("lang", "en")
+    safe_name = re.sub(r"[^A-Za-z0-9_-]+", "", profile.display_name or "") or "me"
+    options = dict(
+        label="Download my top 10 receipt" if lang == "en" else "I-download akong top 10 resibo",
+        data=state.receipt_png,
+        file_name=f"ReceiptNiBai_{safe_name}.png",
+        mime="image/png",
+        key="rc_receipt",
+    )
+    try:
+        st.download_button(**options, on_click="ignore")   # Streamlit >= 1.43: no rerun on click
+    except TypeError:
+        st.download_button(**options)
 
 
 def _verdict_html(roast: dict, lang: str) -> str:
@@ -412,6 +485,21 @@ def init_chat_state(roast: dict) -> None:
     st.session_state.roast = roast
     st.session_state.beat = 0
     st.session_state.chat = []
+    st.session_state.receipt_png = None   # rebuilt for the new profile on the next verdict
+
+
+ANGRY_CSS = """
+<style>
+.stApp .st-key-rc_panel { animation: rc-angry .2s linear infinite !important; }
+@keyframes rc-angry {
+  0%, 50%, 100% { box-shadow: calc(8 * var(--u)) calc(8 * var(--u)) 0 var(--ink); }
+  5%, 45%       { box-shadow: calc(8 * var(--u)) calc(8 * var(--u)) 0 #FF3B30, 0 0 0 4px #FF3B30; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stApp .st-key-rc_panel { animation: none !important; box-shadow: 0 0 0 4px #FF3B30 !important; }
+}
+</style>
+"""
 
 
 @st.fragment
@@ -423,7 +511,8 @@ def chat_panel() -> None:
 
     st.markdown(CSS, unsafe_allow_html=True)
 
-    # Angry mood: only a beat marked "mood": "angry" makes the card flash red.
+    # Angry mood (easter egg): a beat marked "mood": "angry" makes the card flash red.
+    # The card itself must ALWAYS render — only the flash depends on the mood.
     if state.beat < len(beats) and beats[state.beat].get("mood") == "angry":
         st.markdown(ANGRY_CSS, unsafe_allow_html=True)
 

@@ -2,7 +2,7 @@
 SPOTIBAI — Song Wheel + Chat (Streamlit + Spotify)
 
 After login:
-- the user's 10 most-played songs are loaded automatically and shuffled
+- the user's top 10 songs (the same list as the receipt) are loaded automatically and shuffled
 - rounded rectangular cards on an arc shuffle upward by itself, then play each
     song for CLIP_SECONDS in wheel order (cards move up along the arc, the top
     card fades out and a new one fades in at the bottom); album covers fill
@@ -50,7 +50,6 @@ SCOPE = ("user-top-read user-read-recently-played user-library-read "
 # ---- Settings you can change ------------------------------------------------
 TOP_N = 10                  # songs on the wheel
 CLIP_SECONDS = 30           # how long each song plays (30 or 60)
-TIME_RANGE = "medium_term"  # "short_term" = last 4 weeks, "medium_term" = ~6 months, "long_term" = all time
 # -----------------------------------------------------------------------------
 
 
@@ -155,90 +154,55 @@ me = st.session_state.me
 
 
 # ---------------------------------------------------------------------------
-# 2. Load the user's top songs automatically (once per login)
+# 2. Profile (once per login) — the wheel AND the receipt both come from it
 # ---------------------------------------------------------------------------
-def to_song(track):
-    """Spotify track object -> the small dict the wheel needs (or None)."""
-    if not track or track.get("is_local"):
-        return None
-    uri = track.get("uri") or ""
-    if not uri.startswith("spotify:track:"):
-        return None  # skip podcast episodes / local files
-    artists = ", ".join(a["name"] for a in track.get("artists", [])) or "Unknown"
-    album = track.get("album") or {}
-    images = album.get("images") or []
-    image = min(images, key=lambda im: abs((im.get("width") or 300) - 300))["url"] if images else ""
-    return {
-        "name": track["name"],
-        "artist": artists,
-        "uri": uri,
-        "image": image,
-        "album": album.get("name", ""),
-        "release_date": album.get("release_date", ""),
-    }
-
-
-def dedupe(songs):
-    seen, out = set(), []
-    for s in songs:
-        if s and s["uri"] not in seen:
-            seen.add(s["uri"])
-            out.append(s)
-    return out
-
-
-def load_wheel_songs():
-    """Top TOP_N songs; topped up with recently played ones if the account is new."""
-    top = sp.current_user_top_tracks(limit=TOP_N, time_range=TIME_RANGE)["items"]
-    songs = dedupe(to_song(t) for t in top)
-    if len(songs) < TOP_N:
-        recent = sp.current_user_recently_played(limit=50)["items"]
-        songs = dedupe(songs + [to_song(item["track"]) for item in recent])
-    songs = songs[:TOP_N]
-    random.shuffle(songs)
-    return songs
-
-
-if "wheel" not in st.session_state:
-    try:
-        with st.spinner("Getting your top songs from Spotify…"):
-            st.session_state.wheel = load_wheel_songs()
-    except (spotipy.SpotifyException, requests.exceptions.RequestException) as e:
-        st.error(f"Couldn't get your songs from Spotify: {e}")
-        st.button("Retry")
-        st.stop()
-
-wheel = st.session_state.wheel
-if not wheel:
-    st.warning("Your Spotify account doesn't have listening history yet. "
-               "Play a few songs on Spotify, then refresh this page.")
-    st.stop()
-
-
-# ---------------------------------------------------------------------------
-# 3. Roast (P4) — profile + stats + AI roast, once per login and language
-# ---------------------------------------------------------------------------
+from FrontEnd.UI.loader import LoadingScreen          # noqa: E402
 from BackEnd.roast import make_roast                      # noqa: E402
 from BackEnd.sources.spotify import fetch_profile         # noqa: E402
 from BackEnd.stats import compute_all                     # noqa: E402
+from FrontEnd.UI.receipt import wheel_songs               # noqa: E402
 from FrontEnd.UI.roast_chat import chat_panel, init_chat_state  # noqa: E402
+
+lang = st.session_state.get("lang", "en")              # set by the intro's language step
+loader = LoadingScreen(lang)                           # full-screen loader for the fetches below
 
 if "profile" not in st.session_state:
     try:
-        with st.spinner("Digging through your library…"):
-            st.session_state.profile = fetch_profile(sp)
-            st.session_state.stats = compute_all(st.session_state.profile)
+        loader.show(0)
+        st.session_state.profile = fetch_profile(sp)
+        loader.show(1)
+        st.session_state.stats = compute_all(st.session_state.profile)
     except (spotipy.SpotifyException, requests.exceptions.RequestException) as e:
+        loader.hide()
         st.error(f"Couldn't read your listening history from Spotify: {e}")
         st.button("Retry")
         st.stop()
 
+# The wheel = the same top 10 songs as the receipt (FrontEnd/UI/receipt.py), shuffled.
+# Built ONCE per login: a new order on every rerun would reload the wheel and restart the music.
+if not st.session_state.get("wheel_from_receipt") or "wheel" not in st.session_state:
+    songs = wheel_songs(st.session_state.profile)[:TOP_N]
+    random.shuffle(songs)
+    st.session_state.wheel = songs
+    st.session_state.wheel_from_receipt = True
+
+wheel = st.session_state.wheel
+if not wheel:
+    loader.hide()
+    st.warning("Your account doesn't have listening history yet. "
+               "Play a few songs, then refresh this page.")
+    st.stop()
+
+
+# ---------------------------------------------------------------------------
+# 3. Roast (P4) — AI roast, once per login and language
+# ---------------------------------------------------------------------------
 st.session_state.sp = sp    # the chat uses it to check song picks exist on Spotify
-lang = st.session_state.get("lang", "en")              # set by the intro's language step
 if st.session_state.get("roast", {}).get("lang") != lang:
-    with st.spinner("Judging your music taste…" if lang == "en" else "Gi-judge imong music taste…"):
-        # 1 AI call (1 AK). Never raises: falls back to template lines if the AI fails.
-        init_chat_state(make_roast(st.session_state.profile, st.session_state.stats, lang))
+    loader.show(2)
+    # 1 AI call (1 AK). Never raises: falls back to template lines if the AI fails.
+    init_chat_state(make_roast(st.session_state.profile, st.session_state.stats, lang))
+loader.hide()                                          # data is ready: reveal the wheel
 
 
 # ---------------------------------------------------------------------------
