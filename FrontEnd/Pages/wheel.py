@@ -361,7 +361,6 @@ PAGE_HTML = """
   </svg>
 
   <canvas id="viz" aria-hidden="true"></canvas>
-  <div id="hint">Click anywhere to start the music</div>
   
 </div>
 <div id="embed-box"><div id="embed"></div></div>
