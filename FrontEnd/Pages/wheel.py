@@ -44,8 +44,8 @@ if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
     st.stop()
 
 SCOPE = ("user-top-read user-read-recently-played user-library-read "
-         "playlist-read-private playlist-read-collaborative "
-         "streaming user-read-email user-read-private")   # last 3: Web Playback SDK (volume + fades)
+         "playlist-read-private playlist-read-collaborative ")
+         # "streaming user-read-email user-read-private")    last 3: Web Playback SDK (volume + fades)
 
 # ---- Settings you can change ------------------------------------------------
 TOP_N = 10                  # songs on the wheel
@@ -217,24 +217,7 @@ def load_wheel_songs():
 from FrontEnd.UI.loader import LoadingScreen          # noqa: E402
 
 lang = st.session_state.get("lang", "en")              # set by the intro's language step
-loader = LoadingScreen(lang)                           # full-screen loader for the fetches below
-
-if "wheel" not in st.session_state:
-    try:
-        loader.show(0)
-        st.session_state.wheel = load_wheel_songs()
-    except (spotipy.SpotifyException, requests.exceptions.RequestException) as e:
-        loader.hide()
-        st.error(f"Couldn't get your songs from Spotify: {e}")
-        st.button("Retry")
-        st.stop()
-
-wheel = st.session_state.wheel
-if not wheel:
-    loader.hide()
-    st.warning("Your Spotify account doesn't have listening history yet. "
-               "Play a few songs on Spotify, then refresh this page.")
-    st.stop()
+loader = LoadingScreen(lang)                           # ONE loader for the whole page (one slot, one hide())
 
 
 # ---------------------------------------------------------------------------
@@ -245,9 +228,6 @@ from BackEnd.sources.spotify import fetch_profile         # noqa: E402
 from BackEnd.stats import compute_all                     # noqa: E402
 from FrontEnd.UI.receipt import wheel_songs               # noqa: E402
 from FrontEnd.UI.roast_chat import chat_panel, init_chat_state  # noqa: E402
-
-lang = st.session_state.get("lang", "en")              # set by the intro's language step
-loader = LoadingScreen(lang)                           # full-screen loader for the fetches below
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def cached_profile(user_id: str, _sp):          # "_sp" = not part of the cache key
