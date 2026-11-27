@@ -95,7 +95,8 @@ header[data-testid="stHeader"]{background:transparent!important}
 .st-key-ed_card [class*="st-key-sb_choices"]{width:fit-content!important;max-width:100%;margin-left:auto!important;align-items:stretch!important}
 .st-key-ed_card [class*="st-key-sb_choices"] [data-testid="stElementContainer"],
 .st-key-ed_card [class*="st-key-sb_choices"] [data-testid="stElementContainer"] > *,
-.st-key-ed_card [class*="st-key-sb_choices"] button{width:100%!important}
+.st-key-ed_card [class*="st-key-sb_choices"] button,
+.st-key-ed_card [class*="st-key-sb_choices"] a{width:100%!important}
 .st-key-ed_card [class*="st-key-sb_choices"] [data-testid="stElementContainer"]:has(.ed-label){width:100%!important}
 /* ONE rule set drives every state through variables (beats the theme's rounded pills) */
 .stApp .st-key-ed_card [data-testid^="stBase"]{
@@ -108,10 +109,16 @@ header[data-testid="stHeader"]{background:transparent!important}
   font-size:max(12px,calc(13 * var(--u)))!important;font-weight:600!important;letter-spacing:.08em!important;
   text-transform:uppercase!important;line-height:1.35!important}
 /* primary: solid ink, turns yellow on hover (roast_chat's first button) */
-.stApp .st-key-ed_card [data-testid="stBaseButton-primary"]{--ed-bg:#1A1A1A;--ed-fg:#fff}
-.stApp .st-key-ed_card [data-testid="stBaseButton-primary"]:hover{--ed-bg:#FCE38A;--ed-fg:#1A1A1A}
+.stApp .st-key-ed_card [data-testid="stBaseButton-primary"],
+.stApp .st-key-ed_card [data-testid="stBaseLinkButton-primary"]{--ed-bg:#1A1A1A;--ed-fg:#fff}
+.stApp .st-key-ed_card [data-testid="stBaseButton-primary"]:hover,
+.stApp .st-key-ed_card [data-testid="stBaseLinkButton-primary"]:hover{--ed-bg:#FCE38A;--ed-fg:#1A1A1A}
+/* login links (choice_links) look exactly like the buttons */
+.stApp .st-key-ed_card [data-testid^="stBaseLinkButton"]{text-decoration:none!important;display:flex;
+  align-items:center;justify-content:center}
 /* secondary: outlined, fills light grey on hover */
-.stApp .st-key-ed_card [data-testid="stBaseButton-secondary"]:hover{--ed-bg:#F5F5F5}
+.stApp .st-key-ed_card [data-testid="stBaseButton-secondary"]:hover,
+.stApp .st-key-ed_card [data-testid="stBaseLinkButton-secondary"]:hover{--ed-bg:#F5F5F5}
 .stApp .st-key-ed_card [data-testid^="stBase"]:hover{transform:translateY(-1px)}
 .stApp .st-key-ed_card [data-testid^="stBase"]:active{transform:translateY(0)}
 /* login step keeps the brand hover colors */
@@ -262,6 +269,19 @@ def choice_buttons(options: list[dict], step: int) -> int | None:
                 clicked = i
     return clicked
 
+
+def choice_links(options: list[dict], step: int) -> None:
+    """Same look and fade-in as choice_buttons, but each option is a LINK (options need a "url").
+    Used for the login step: on Streamlit Cloud only a real click may open the Spotify/Google login."""
+    with st.container(key=f"sb_choices_{step}"):
+        if SHOW_CHOICE_LABEL:
+            st.markdown('<div class="ed-label">Choose a response:</div>', unsafe_allow_html=True)
+        for i, o in enumerate(options):
+            brand = f"_brand-{o['brand']}" if o.get("brand") else ""
+            st.link_button(o["label"], o["url"], key=f"c{step}_{i}{brand}",
+                           type="primary" if o.get("primary") else "secondary")
+
+            
 # ----------------------------- the "click no, yes gets bigger" meme -----------------------------
 PUSHY_GROW = 1.20     # how much bigger the yes button gets per "no" (0.45 = +45% each time)
 PUSHY_SHRINK = 0.15   # how much smaller the no button gets per "no" (0.25 = gone after 4)
