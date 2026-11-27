@@ -371,7 +371,7 @@ with left_hero:
         '</div>'
         '<div class="hero-title">'
         'IS YOUR MUSIC </br>TASTE '
-        '<span class="highlight">GARBAGE?</span>'
+        '<span class="highlight">TRASH?</span>'
         '</div>'
         '</div>'
     )
