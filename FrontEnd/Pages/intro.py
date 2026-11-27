@@ -10,8 +10,25 @@ if str(ROOT_DIR) not in sys.path:
 
 
 import streamlit as st
-from FrontEnd.UI.editorial import setup_editorial_page, editorial_card, editorial_header, choice_buttons, pushy_css, dark_css, horror_music
+from FrontEnd.UI.editorial import setup_editorial_page, editorial_card, editorial_header, choice_buttons, choice_links, pushy_css, dark_css, horror_music
 from FrontEnd.UI.chat import ai_said, ai_say, chosen_pills, follow_scroll
+
+from spotipy.cache_handler import MemoryCacheHandler
+from spotipy.oauth2 import SpotifyOAuth
+from BackEnd.config import get_secret
+from BackEnd.sources import youtube
+from BackEnd.sources.spotify import SCOPE
+
+
+def login_urls(lang: str) -> dict:
+    """Direct login links, so the intro click itself opens Spotify / Google (Cloud blocks auto-jumps)."""
+    spotify = SpotifyOAuth(
+        client_id=get_secret("SPOTIFY_CLIENT_ID"), client_secret=get_secret("SPOTIFY_CLIENT_SECRET"),
+        redirect_uri=get_secret("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8501/wheel"),
+        scope=SCOPE, open_browser=False, cache_handler=MemoryCacheHandler(),
+    ).get_authorize_url(state=lang)
+    return {"spotify": spotify, "youtube": youtube.authorize_url(state=lang)}
+
 
 # ---- The conversation. Each node = one AI message + the reply options under it. ----
 # option: label (what the user "says"), next (node to go to), go (page to open),
@@ -134,7 +151,12 @@ with editorial_card():
             chosen_pills(item[1], item[2])
     secs = ai_say(say, step)                  # typed out; reply buttons appear when it finishes
     follow_scroll(secs + 1.5, step)
-    picked = choice_buttons(node["options"], step)
+    if ss.intro_node == "login":     # real links: Cloud only lets a click open the login page
+        urls = login_urls(ss.get("lang", "en"))
+        choice_links([{**o, "url": urls[o["brand"]]} for o in node["options"]], step)
+        picked = None
+    else:
+        picked = choice_buttons(node["options"], step)
 
 if picked is not None:
     opt = node["options"][picked]
