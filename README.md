@@ -58,7 +58,7 @@ spoti-bai/
 
 ### 1. Requirements
 
-- Python 3.10+
+- Python 3.11+ (required by the pinned Streamlit and Pillow versions)
 - A [Spotify Developer](https://developer.spotify.com/dashboard) app
 - A Google Cloud OAuth client with the YouTube Data API enabled (only if you want YouTube login)
 
@@ -91,10 +91,12 @@ SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8501/wheel"
 
 YOUTUBE_CLIENT_ID = "your-google-client-id"
 YOUTUBE_CLIENT_SECRET = "your-google-client-secret"
-YOUTUBE_REDIRECT_URI = "http://localhost:8501/youtube_login"
+YOUTUBE_REDIRECT_URI = "http://127.0.0.1:8501/youtube_login"
 
-# plus the key for the AI provider used in BackEnd/llm.py
+# plus the AI key (the app uses the `openai` package; see BackEnd/llm.py for the exact key name)
 ```
+
+Secrets are looked up in this order: Streamlit secrets, then environment variables, then `.streamlit/secrets.toml` (see `BackEnd/config.py`), so you can also set them as environment variables, which is handy for tests and scripts. Keep the keys at the top level of the file, above any `[section]` header.
 
 Register the same redirect URIs in the Spotify dashboard and the Google Cloud console. They must match exactly. The Spotify redirect points at `/wheel` and the YouTube one at `/youtube_login`.
 
@@ -107,12 +109,8 @@ On Streamlit Community Cloud, put the same keys in the app's **Secrets** setting
 ```bash
 streamlit run app.py
 ```
-or:
-```bash
-python -m streamlit run app.py
-```
 
-Open http://localhost:8501 (use `127.0.0.1` if your Spotify redirect URI does).
+Open **http://127.0.0.1:8501** (not `localhost`). Spotify only accepts `127.0.0.1` redirect URIs for local development, so the app and the redirect URI must use the same address.
 
 ## Configuration
 
@@ -129,6 +127,7 @@ Background density and size: the settings block at the top of `FrontEnd/UI/backg
 
 ## How it works
 
+0. `app.py` registers every page with `st.navigation` (hidden sidebar). The pages navigate themselves with `st.switch_page`, so a new page must be added to the list in `app.py` first.
 1. `intro.py` runs a scripted chat, saves the chosen `source` and `lang` in `st.session_state`, then opens the login page.
 2. **Spotify:** `wheel.py` redirects to Spotify, gets the token back on `/wheel` and keeps it in the user's own session.
    **YouTube:** `youtube_login.py` handles the Google redirect, builds the profile and wheel songs, then opens `wheel.py`.
@@ -145,7 +144,7 @@ Config is in `pytest.ini`.
 
 ## Tech stack
 
-Streamlit, Spotipy, Pillow, Requests, and the YouTube Data API. The wheel is a single HTML/JS/SVG component embedded with `components.html`.
+Streamlit 1.67, Spotipy, Pillow, Requests, OpenAI, and the YouTube Data API. The wheel is a single HTML/JS/SVG component embedded with `components.html`.
 
 ## Privacy
 
