@@ -65,7 +65,7 @@ spoti-bai/
 ### 2. Install
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/kworuu/spoti-bai.git
 cd spoti-bai
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
